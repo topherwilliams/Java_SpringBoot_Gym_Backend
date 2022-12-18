@@ -39,7 +39,6 @@ public class AuthorisationFilter implements Filter {
         else if (memberIsAuthorised(request)) {
             System.out.println("Member is authorised. Allow through.");
             System.out.println(request.getRequestURI());
-            System.out.println(filterChain.);
             //TODO: This is not working for update Member endpoint. Authorises okay but never seems to reach the endpoint after auth. All other member use cases are reaching endpoints.
             filterChain.doFilter(servletRequest, servletResponse);
         }
