@@ -23,5 +23,8 @@ public class Instructor {
     @OneToMany(mappedBy = "instructor")
     @OrderBy(value="id")
     private List<FitnessClass> classes;
+    private String email;
+    private String password;
+    private String token;
 
 }

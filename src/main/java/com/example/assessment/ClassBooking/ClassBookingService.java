@@ -45,7 +45,6 @@ public class ClassBookingService {
             }
         } else {
             // member or class does not exist
-            // TODO: More elegant / helpful response possible?
             return null;
         }
     };

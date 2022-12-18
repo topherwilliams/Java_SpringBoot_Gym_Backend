@@ -59,27 +59,5 @@ public class FitnessClassRestController {
         return fitnessClassService.getUpcomingClassesForInstructor(instructor_id);
     }
 
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public Map<String, String> handleValidationExceptions(MethodArgumentNotValidException ex) {
-        Map<String, String> errors = new HashMap<>();
 
-        ex.getBindingResult().getAllErrors().forEach((error) -> {
-            String fieldName = ((FieldError) error).getField();
-            String errorMessage = error.getDefaultMessage();
-            errors.put(fieldName, errorMessage);
-        });
-        return errors;
-    }
-
-    //TODO - Check this one as new.
-    @ExceptionHandler(ConstraintViolationException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ResponseEntity<String> handleConstraintViolationExceptions (ConstraintViolationException ex) {
-        String violations = ex.getConstraintViolations()
-                .stream()
-                .map(v -> v.getMessageTemplate())
-                .collect(Collectors.joining("; "));
-        return new ResponseEntity<>("Validation Error: " + violations, HttpStatus.BAD_REQUEST);
-    }
 }

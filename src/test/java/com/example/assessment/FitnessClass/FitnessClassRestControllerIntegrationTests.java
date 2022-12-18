@@ -64,8 +64,6 @@ class FitnessClassRestControllerIntegrationTests {
     ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
 
     // CREATE NEW FITNESS CLASS USE CASES
-    // TODO: Retest and check test code - updated validation so some of the invalid value tests might not work properly now.
-
 
     @Test
     void test_createNewFitnessClassWithInvalidInstructorID_expect_emptyResponse() throws Exception {

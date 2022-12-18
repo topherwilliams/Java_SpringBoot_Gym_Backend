@@ -32,6 +32,8 @@ public class Member {
     @OneToMany(mappedBy = "member")
     @OrderBy(value="id")
     private List<Workout> workouts;
+    private String password;
+    private String token;
 
 //    private List<ClassBooking> getUpcomingClasses() {
 //        List<ClassBooking> upcomingClasses = new ArrayList<>();

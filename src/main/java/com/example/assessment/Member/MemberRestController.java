@@ -5,7 +5,6 @@ import com.example.assessment.Member.DTOs.NewMemberDTO;
 import com.example.assessment.Member.DTOs.UpdatedMemberDTO;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.annotation.Validated;
@@ -53,30 +52,9 @@ public class MemberRestController {
     }
 
     @PatchMapping( path="/update")
-    MemberDTO updateMember(@RequestBody @Valid UpdatedMemberDTO updatedMemberDTO) {
+    MemberDTO updateMember(@RequestBody UpdatedMemberDTO updatedMemberDTO) {
+        System.out.println("Reached update member endpoint...");
         return memberService.updateMember(updatedMemberDTO);
     }
 
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public Map<String, String> handleValidationExceptions(MethodArgumentNotValidException ex) {
-        Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach((error) -> {
-            String fieldName = ((FieldError) error).getField();
-            String errorMessage = error.getDefaultMessage();
-            errors.put(fieldName, errorMessage);
-        });
-        return errors;
-    }
-
-    //TODO - Check this one as new.
-    @ExceptionHandler(ConstraintViolationException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ResponseEntity<String> handleConstraintViolationExceptions (ConstraintViolationException ex) {
-        String violations = ex.getConstraintViolations()
-                .stream()
-                .map(v -> v.getMessageTemplate())
-                .collect(Collectors.joining("; "));
-        return new ResponseEntity<>("Validation Error: " + violations, HttpStatus.BAD_REQUEST);
-    }
 }
