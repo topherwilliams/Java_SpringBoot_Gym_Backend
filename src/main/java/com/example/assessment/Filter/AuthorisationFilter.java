@@ -1,11 +1,17 @@
 package com.example.assessment.Filter;
 
+import com.example.assessment.ClassBooking.DTOs.NewClassBookingDTO;
+import com.example.assessment.Instructor.DTOs.InstructorCredentialsDTO;
 import com.example.assessment.Instructor.Entities.Instructor;
 import com.example.assessment.Instructor.InstructorService;
 import com.example.assessment.Member.DTOs.MemberCredentialsDTO;
 import com.example.assessment.Member.DTOs.UpdatedMemberDTO;
 import com.example.assessment.Member.Entities.Member;
 import com.example.assessment.Member.MemberService;
+import com.example.assessment.Workout.DTOs.NewWorkoutDTO;
+import com.example.assessment.Workout.Entities.Workout;
+import com.example.assessment.Workout.WorkoutRepository;
+import com.example.assessment.WorkoutExercise.DTOs.NewWorkoutExerciseDTO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 
@@ -22,28 +28,24 @@ public class AuthorisationFilter implements Filter {
     private final MemberService memberService;
     private final InstructorService instructorService;
 
+    private final WorkoutRepository workoutRepository;
+
 
     @Override
     public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
-//        TODO: Currently doing basic work to get authentication and authorisation working. Once working revisit UML diagrams and come up with proper rules.
         HttpServletRequest request = (HttpServletRequest)servletRequest;
         HttpServletResponse response = (HttpServletResponse)servletResponse;
         String requestURI = request.getRequestURI().toLowerCase();
 
-        // Authorisation Rules
+        // AUTHORISATION RULES
         if (requestURI.contains("member/create")) {
-            // No authorisation required
-            System.out.println("No auth required");
+            // No authorisation required to create a new member
             filterChain.doFilter(servletRequest, servletResponse);
         }
         else if (memberIsAuthorised(request)) {
-            System.out.println("Member is authorised. Allow through.");
-            System.out.println(request.getRequestURI());
-            //TODO: This is not working for update Member endpoint. Authorises okay but never seems to reach the endpoint after auth. All other member use cases are reaching endpoints.
             filterChain.doFilter(servletRequest, servletResponse);
         }
 //        else if (instructorIsAuthorised(request)) {
-//            System.out.println("Instructor is authorised. Allow through.");
 //            filterChain.doFilter(servletRequest, servletResponse);
 //        }
         else {
@@ -52,32 +54,61 @@ public class AuthorisationFilter implements Filter {
     }
 
     private boolean memberIsAuthorised(HttpServletRequest request) throws IOException {
-        System.out.println("Member authorisation");
+        ObjectMapper mapper = new ObjectMapper();
         String requestURI = request.getRequestURI().toLowerCase();
         String token = request.getHeader("AUTHORIZATION");
-        Member m;
-        // REMINDER: Token always received as a string - convert to DTO if necessary.
-        if (token.contains("email_address") && token.contains("password")) {
-            String[] authParts = token.split("\"");
-            MemberCredentialsDTO mcredDTO = new MemberCredentialsDTO(authParts[3], authParts[7]);
-            m = memberService.checkCredentials(mcredDTO);
-        } else {
-            m = memberService.checkCredentials(token);
-        }
-        if (m != null) {
-            if (requestURI.startsWith("/member/delete/")) {
-                //System.out.println("Delete / update use case - additional validation required");
-                String[] parts = requestURI.substring(1).split("/");
-                int id = Integer.parseInt(parts[2]);
-                return m.getId() == id;
-            } else if (requestURI.startsWith("/member/update/")) {
-                ObjectMapper mapper = new ObjectMapper();
-                UpdatedMemberDTO uMemberDTO = mapper.readValue(request.getInputStream(), UpdatedMemberDTO.class);
-                // compare ID of user who submitted request (i.e. in Header/Authorization) with the ID in the body of the request (intended target).
-                return m.getId() == uMemberDTO.getId();
+        if (token != null) {
+            Member m;
+            // REMINDER: Convert token to DTO when necessary.
+            if (token.contains("email_address") && token.contains("password")) {
+                String[] authParts = token.split("\"");
+                MemberCredentialsDTO mcredDTO = new MemberCredentialsDTO(authParts[3], authParts[7]);
+                m = memberService.checkCredentials(mcredDTO);
+            } else {
+                m = memberService.checkCredentials(token);
             }
-            else {
-                return true;
+            if (m != null) {
+                // Use case authorisation rules for member
+                if (requestURI.startsWith("/fitnessclass/create") || requestURI.startsWith("/fitnessclass/update") ||
+                        requestURI.startsWith("/fitnessclass/instructor")) {
+                    // Members aren't allowed to do these fitnessclass use cases
+                    return false;
+                } else if (requestURI.startsWith("/classbooking")) {
+                    // Members can only book / cancel / view class booking for themselves
+                    if (requestURI.startsWith("/classbooking/create")) {
+                        // TODO: Authentication happens but request is not passed to endpoint.
+                        NewClassBookingDTO nDTO = mapper.readValue(request.getInputStream(), NewClassBookingDTO.class);
+                        return m.getId() == nDTO.getMember_id();
+                    } else if (requestURI.startsWith("/classbooking/cancel")) {
+                        return m.getId() == requestTargetID(requestURI, 2);
+                    } else if (requestURI.startsWith("/classbooking/attendee")) {
+                        return m.getId() == requestTargetID(requestURI, 2);
+                    }
+                } else if (requestURI.startsWith("/workout/")) {
+                    // Members can only create a workout or add exercises for themselves.
+                    if (requestURI.startsWith("/workout/create")) {
+                        // TODO: Authentication happens but request is not passed to endpoint.
+                        NewWorkoutDTO nwDTO = mapper.readValue(request.getInputStream(), NewWorkoutDTO.class);
+                        return m.getId() == nwDTO.getMember_id();
+                    } else if (requestURI.startsWith("/workout/addexercise")) {
+                        // TODO: Authentication happens but request is not passed to endpoint.
+                        NewWorkoutExerciseDTO nEDTO = mapper.readValue(request.getInputStream(), NewWorkoutExerciseDTO.class);
+                        Workout w = workoutRepository.findById(nEDTO.getWorkout_id()).orElse(null);
+                        if (w != null) {
+                            return m.getId() == w.getMember().getId();
+                        }
+                    }
+                } else if (requestURI.startsWith("/member/delete/")) {
+                    return m.getId() == requestTargetID(requestURI, 2);
+                } else if (requestURI.startsWith("/member/update/")) {
+                    // TODO: Authentication happens but request is not passed to endpoint.
+                    UpdatedMemberDTO uMemberDTO = mapper.readValue(request.getInputStream(), UpdatedMemberDTO.class);
+                    return m.getId() == uMemberDTO.getId();
+                }
+                else {
+                    // All other use cases require no authorisation.
+                    return true;
+                }
             }
         }
         return false;
@@ -86,13 +117,26 @@ public class AuthorisationFilter implements Filter {
     private boolean instructorIsAuthorised(HttpServletRequest request) {
         String requestURI = request.getRequestURI().toLowerCase();
         String token = request.getHeader("AUTHORIZATION");
-        Instructor i = instructorService.checkCredentials(token);
-
-        if (i != null) {
-            // For intended use cases, there are no specific authorisation factors here for the endpoints.
-            return true;
+        if (token != null) {
+            Instructor i;
+            // REMINDER: Token always received as a string - convert to DTO if necessary.
+            if (token.contains("email") && token.contains("password")) {
+                String[] authParts = token.split("\"");
+                InstructorCredentialsDTO icredDTO = new InstructorCredentialsDTO(authParts[3], authParts[7]);
+                i = instructorService.checkCredentials(icredDTO);
+            } else {
+                i = instructorService.checkCredentials(token);
+            }
+            if (i != null) {
+                // For intended use cases, there are no specific authorisation factors here for the endpoints.
+                return true;
+            }
         }
         return false;
     }
 
+    private int requestTargetID(String requestURI, int part) {
+        String[] parts = requestURI.substring(1).split("/");
+        return Integer.parseInt(parts[part]);
+    }
 }

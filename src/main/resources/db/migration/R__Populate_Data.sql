@@ -75,11 +75,11 @@ VALUES ('Instructor 1', 'email@one.com', 'password1'),
        ('Instructor 3', 'email@one.com',  'password3');
 
 insert into Fitness_Class(instructor_id, uuid, class_name, duration, spaces, booked_spaces, class_date)
-values (1, '4b102ba9-9ef6-4e17-b196-3f6b9ab82dcd' , 'Pilates', 45, 20, 2, DATE '2022-12-01'),
-       (1,'6ca59bde-d2b4-4fd9-8c7e-1fe7bc268182', 'Yoga', 60, 20, 0, DATE '2022-12-02'),
-       (1, 'e601b1e2-70de-47ba-8811-f06df6b27ce2', 'Pilates', 45, 20, 20, DATE '2022-12-05'),
-       (2, 'a411e732-908c-4ed9-8e16-5e7387d24bc7', 'Spin', 60, 10, 0, DATE '2022-12-01'),
-       (2, 'fe4d3903-fe05-454b-9bee-32da0969d965', 'WeightLifting', 60, 30, 1, DATE '2022-12-08');
+values (1, '4b102ba9-9ef6-4e17-b196-3f6b9ab82dcd' , 'Pilates', 45, 20, 2, DATE '2023-12-01'),
+       (1,'6ca59bde-d2b4-4fd9-8c7e-1fe7bc268182', 'Yoga', 60, 20, 0, DATE '2023-12-02'),
+       (1, 'e601b1e2-70de-47ba-8811-f06df6b27ce2', 'Pilates', 45, 20, 20, DATE '2023-12-05'),
+       (2, 'a411e732-908c-4ed9-8e16-5e7387d24bc7', 'Spin', 60, 10, 0, DATE '2023-12-01'),
+       (2, 'fe4d3903-fe05-454b-9bee-32da0969d965', 'WeightLifting', 60, 30, 1, DATE '2023-12-08');
 
 insert into Member(email_address, username, member_name, password)
 values ('email_one@email.com', 'username1', 'Member One', 'password1'),
