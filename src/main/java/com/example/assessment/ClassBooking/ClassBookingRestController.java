@@ -24,8 +24,8 @@ public class ClassBookingRestController {
 
     private final ClassBookingService classBookingService;
 
-    @PostMapping(path="/create")
-    ClassBooking_FitnessClass_DTO bookClass(@RequestBody @Valid NewClassBookingDTO newClassBookingDTO){
+    @PostMapping(path="/create/{userID}")
+    ClassBooking_FitnessClass_DTO bookClass(@PathVariable(name = "userID") int id, @RequestBody @Valid NewClassBookingDTO newClassBookingDTO){
         return classBookingService.bookClass(newClassBookingDTO);
     };
 
@@ -43,16 +43,5 @@ public class ClassBookingRestController {
         return classBookingService.getUpcomingClassesByMember(id);
     }
 
-//    @ResponseStatus(HttpStatus.BAD_REQUEST)
-//    @ExceptionHandler(MethodArgumentNotValidException.class)
-//    public Map<String, String> handleValidationExceptions(MethodArgumentNotValidException ex) {
-//        Map<String, String> errors = new HashMap<>();
-//
-//        ex.getBindingResult().getAllErrors().forEach((error) -> {
-//            String fieldName = ((FieldError) error).getField();
-//            String errorMessage = error.getDefaultMessage();
-//            errors.put(fieldName, errorMessage);
-//        });
-//        return errors;
-//    }
+
 }

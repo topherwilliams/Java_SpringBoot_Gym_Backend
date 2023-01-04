@@ -1,6 +1,8 @@
 package com.example.assessment.Filter;
 
+import com.example.assessment.ClassBooking.ClassBookingRepository;
 import com.example.assessment.ClassBooking.DTOs.NewClassBookingDTO;
+import com.example.assessment.ClassBooking.Entities.ClassBooking;
 import com.example.assessment.Instructor.DTOs.InstructorCredentialsDTO;
 import com.example.assessment.Instructor.Entities.Instructor;
 import com.example.assessment.Instructor.InstructorService;
@@ -14,6 +16,7 @@ import com.example.assessment.Workout.WorkoutRepository;
 import com.example.assessment.WorkoutExercise.DTOs.NewWorkoutExerciseDTO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
+import org.springframework.web.util.ContentCachingRequestWrapper;
 
 import javax.servlet.*;
 import javax.servlet.annotation.WebFilter;
@@ -29,6 +32,7 @@ public class AuthorisationFilter implements Filter {
     private final InstructorService instructorService;
 
     private final WorkoutRepository workoutRepository;
+    private final ClassBookingRepository classBookingRepository;
 
 
     @Override
@@ -36,6 +40,7 @@ public class AuthorisationFilter implements Filter {
         HttpServletRequest request = (HttpServletRequest)servletRequest;
         HttpServletResponse response = (HttpServletResponse)servletResponse;
         String requestURI = request.getRequestURI().toLowerCase();
+        //ContentCachingRequestWrapper cachedRequest = new ContentCachingRequestWrapper(request); // Creating a cached version of the request
 
         // AUTHORISATION RULES
         if (requestURI.contains("member/create")) {
@@ -43,76 +48,55 @@ public class AuthorisationFilter implements Filter {
             filterChain.doFilter(servletRequest, servletResponse);
         }
         else if (memberIsAuthorised(request)) {
+            System.out.println("Request authenticated, passing to endpoint.");
+            filterChain.doFilter(servletRequest, servletResponse);
+//            filterChain.doFilter(cachedRequest, servletResponse);
+        }
+        else if (instructorIsAuthorised(request)) {
             filterChain.doFilter(servletRequest, servletResponse);
         }
-//        else if (instructorIsAuthorised(request)) {
-//            filterChain.doFilter(servletRequest, servletResponse);
-//        }
         else {
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
         }
     }
 
     private boolean memberIsAuthorised(HttpServletRequest request) throws IOException {
-        ObjectMapper mapper = new ObjectMapper();
         String requestURI = request.getRequestURI().toLowerCase();
         String token = request.getHeader("AUTHORIZATION");
         if (token != null) {
-            Member m;
-            // REMINDER: Convert token to DTO when necessary.
+            Member authenticatedMember;
             if (token.contains("email_address") && token.contains("password")) {
                 String[] authParts = token.split("\"");
                 MemberCredentialsDTO mcredDTO = new MemberCredentialsDTO(authParts[3], authParts[7]);
-                m = memberService.checkCredentials(mcredDTO);
+                authenticatedMember = memberService.checkCredentials(mcredDTO);
             } else {
-                m = memberService.checkCredentials(token);
+                authenticatedMember = memberService.checkCredentials(token);
             }
-            if (m != null) {
-                // Use case authorisation rules for member
+            if (authenticatedMember != null) {
                 if (requestURI.startsWith("/fitnessclass/create") || requestURI.startsWith("/fitnessclass/update") ||
                         requestURI.startsWith("/fitnessclass/instructor")) {
-                    // Members aren't allowed to do these fitnessclass use cases
                     return false;
-                } else if (requestURI.startsWith("/classbooking")) {
-                    // Members can only book / cancel / view class booking for themselves
-                    if (requestURI.startsWith("/classbooking/create")) {
-                        // TODO: Authentication happens but request is not passed to endpoint.
-                        NewClassBookingDTO nDTO = mapper.readValue(request.getInputStream(), NewClassBookingDTO.class);
-                        return m.getId() == nDTO.getMember_id();
-                    } else if (requestURI.startsWith("/classbooking/cancel")) {
-                        return m.getId() == requestTargetID(requestURI, 2);
-                    } else if (requestURI.startsWith("/classbooking/attendee")) {
-                        return m.getId() == requestTargetID(requestURI, 2);
-                    }
+                } else if (requestURI.startsWith("/classbooking/create") || requestURI.startsWith("/classbooking/attendee")) {
+                    return authenticatedMember.getId() == requestTargetID(requestURI, 2);
+                } else if (requestURI.startsWith("/classbooking/cancel")) {
+                    int targetClassBooking = requestTargetID(requestURI, 2);
+                    ClassBooking c = classBookingRepository.findById(targetClassBooking).orElse(null);
+                    return c != null? authenticatedMember.getId() == c.getMember().getId() : false;
                 } else if (requestURI.startsWith("/workout/")) {
-                    // Members can only create a workout or add exercises for themselves.
                     if (requestURI.startsWith("/workout/create")) {
-                        // TODO: Authentication happens but request is not passed to endpoint.
-                        NewWorkoutDTO nwDTO = mapper.readValue(request.getInputStream(), NewWorkoutDTO.class);
-                        return m.getId() == nwDTO.getMember_id();
+                        return authenticatedMember.getId() == requestTargetID(requestURI, 2);
                     } else if (requestURI.startsWith("/workout/addexercise")) {
-                        // TODO: Authentication happens but request is not passed to endpoint.
-                        NewWorkoutExerciseDTO nEDTO = mapper.readValue(request.getInputStream(), NewWorkoutExerciseDTO.class);
-                        Workout w = workoutRepository.findById(nEDTO.getWorkout_id()).orElse(null);
-                        if (w != null) {
-                            return m.getId() == w.getMember().getId();
-                        }
+                        int targetWorkoutID = requestTargetID(requestURI, 2);
+                        Workout w = workoutRepository.findById(targetWorkoutID).orElse(null);
+                        return w != null? authenticatedMember.getId() == w.getMember().getId() : false;
                     }
-                } else if (requestURI.startsWith("/member/delete/")) {
-                    return m.getId() == requestTargetID(requestURI, 2);
-                } else if (requestURI.startsWith("/member/update/")) {
-                    // TODO: Authentication happens but request is not passed to endpoint.
-                    UpdatedMemberDTO uMemberDTO = mapper.readValue(request.getInputStream(), UpdatedMemberDTO.class);
-                    return m.getId() == uMemberDTO.getId();
-                }
-                else {
-                    // All other use cases require no authorisation.
-                    return true;
-                }
+                } else if (requestURI.startsWith("/member/delete/") || requestURI.startsWith("/member/update/")) {
+                    return authenticatedMember.getId() == requestTargetID(requestURI, 2);
+                } else { return true; }
             }
         }
         return false;
-    }
+    };
 
     private boolean instructorIsAuthorised(HttpServletRequest request) {
         String requestURI = request.getRequestURI().toLowerCase();

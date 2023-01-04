@@ -81,7 +81,6 @@ public class MemberService {
     };
 
     MemberDTO updateMember(UpdatedMemberDTO updatedMemberDTO) {
-        System.out.println("Updating Member: " + updatedMemberDTO.getId());
         if (memberRepository.existsById(updatedMemberDTO.getId())) {
             Member memberToUpdate = memberRepository.findById(updatedMemberDTO.getId()).orElse(null);
             UpdatedMemberDTO comparisonExistingMember = new UpdatedMemberDTO(memberToUpdate.getId(), memberToUpdate.getEmail_address(), memberToUpdate.getUsername(), memberToUpdate.getMember_name());

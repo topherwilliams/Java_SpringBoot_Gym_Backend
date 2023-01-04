@@ -51,10 +51,10 @@ public class MemberRestController {
         memberService.deleteMember(memberId);
     }
 
-    @PatchMapping( path="/update")
-    MemberDTO updateMember(@RequestBody UpdatedMemberDTO updatedMemberDTO) {
-        System.out.println("Reached update member endpoint...");
+    @PatchMapping( path="/update/{id}")
+    MemberDTO updateMember(@PathVariable(name = "id") int id,  @RequestBody UpdatedMemberDTO updatedMemberDTO) {
         return memberService.updateMember(updatedMemberDTO);
     }
+
 
 }
