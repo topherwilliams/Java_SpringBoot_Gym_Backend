@@ -22,7 +22,10 @@ import javax.servlet.*;
 import javax.servlet.annotation.WebFilter;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.stream.Collectors;
 
 @AllArgsConstructor
 @WebFilter(urlPatterns = {"/*"})
@@ -48,11 +51,12 @@ public class AuthorisationFilter implements Filter {
             filterChain.doFilter(servletRequest, servletResponse);
         }
         else if (memberIsAuthorised(request)) {
-            System.out.println("Request authenticated, passing to endpoint.");
+            System.out.println("Member request authenticated, passing to endpoint.");
             filterChain.doFilter(servletRequest, servletResponse);
 //            filterChain.doFilter(cachedRequest, servletResponse);
         }
         else if (instructorIsAuthorised(request)) {
+            System.out.println("Instructor request authenticated, passing to endpoint.");
             filterChain.doFilter(servletRequest, servletResponse);
         }
         else {
@@ -77,6 +81,7 @@ public class AuthorisationFilter implements Filter {
                         requestURI.startsWith("/fitnessclass/instructor")) {
                     return false;
                 } else if (requestURI.startsWith("/classbooking/create") || requestURI.startsWith("/classbooking/attendee")) {
+                    // TODO Split out attendee due to issues
                     return authenticatedMember.getId() == requestTargetID(requestURI, 2);
                 } else if (requestURI.startsWith("/classbooking/cancel")) {
                     int targetClassBooking = requestTargetID(requestURI, 2);

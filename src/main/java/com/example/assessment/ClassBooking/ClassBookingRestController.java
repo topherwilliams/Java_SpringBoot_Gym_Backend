@@ -24,9 +24,11 @@ public class ClassBookingRestController {
 
     private final ClassBookingService classBookingService;
 
-    @PostMapping(path="/create/{userID}")
-    ClassBooking_FitnessClass_DTO bookClass(@PathVariable(name = "userID") int id, @RequestBody @Valid NewClassBookingDTO newClassBookingDTO){
-        return classBookingService.bookClass(newClassBookingDTO);
+    @PostMapping(path="/create/{userID}/{classID}")
+    ClassBooking_FitnessClass_DTO bookClass(@PathVariable(name = "userID") int userID,
+                                            @PathVariable(name = "classID") int classID){
+        NewClassBookingDTO n = new NewClassBookingDTO(classID, userID);
+        return classBookingService.bookClass(n);
     };
 
     @DeleteMapping(path="/cancel/{id}")

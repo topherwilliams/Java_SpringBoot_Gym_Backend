@@ -6,7 +6,9 @@ import com.example.assessment.FitnessClass.DTOs.UpdatedFitnessClassDTO;
 import com.example.assessment.FitnessClass.Entities.FitnessClass;
 import com.example.assessment.Instructor.Entities.Instructor;
 import com.example.assessment.Instructor.InstructorRepository;
+import com.example.assessment.Member.Entities.Member;
 import com.example.assessment.Member.MemberRepository;
+import com.example.assessment.UtilityFunctions.AuthTokenClass;
 import com.example.assessment.Workout.WorkoutRepository;
 import com.example.assessment.WorkoutExercise.WorkoutExerciseRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -61,53 +63,134 @@ class FitnessClassRestControllerIntegrationTests {
     @Autowired
     MockMvc mockMvc;
 
-    ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
+    ObjectMapper mapper = new ObjectMapper();
+    ObjectWriter ow = mapper.writer().withDefaultPrettyPrinter();
 
     // CREATE NEW FITNESS CLASS USE CASES
 
     @Test
-    void test_createNewFitnessClassWithInvalidInstructorID_expect_emptyResponse() throws Exception {
+    void createNewFitnessClassFromValidInstructorForSameInstructor_expect_SuccessResponse() throws Exception {
         clearAllRepositories();
-
-        NewFitnessClassDTO n = new NewFitnessClassDTO(8, "Test New Fitness Class", 60, 20, LocalDate.now().plusDays(20));
+        Instructor i = new Instructor(12, "Instructor Test", new ArrayList<>(), "null@null.com", "pass", null);
+        instructorRepository.save(i);
+        AuthTokenClass authToken = new AuthTokenClass(i.getEmail(), i.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
+        NewFitnessClassDTO n = new NewFitnessClassDTO(12, "Test New Fitness Class", 60, 20, LocalDate.now().plusDays(20));
         String expectedJson = ow.writeValueAsString(n);
+        mockMvc.perform(post("/fitnessclass/create")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(expectedJson)
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorisationTokenJSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.class_name").value(n.getClass_name()));
+    }
 
+    @Test
+    void createNewFitnessClassFromValidInstructorForSameInstructorWithoutAuthentication_expect_AuthorisationResponse() throws Exception {
+        clearAllRepositories();
+        Instructor i = new Instructor(12, "Instructor Test", new ArrayList<>(), "null@null.com", "pass", null);
+        instructorRepository.save(i);
+        NewFitnessClassDTO n = new NewFitnessClassDTO(12, "Test New Fitness Class", 60, 20, LocalDate.now().plusDays(20));
+        String expectedJson = ow.writeValueAsString(n);
         mockMvc.perform(post("/fitnessclass/create")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(expectedJson)
                         .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void createNewFitnessClassFromValidInstructorForOtherInstructor_expect_SuccessResponse() throws Exception {
+        clearAllRepositories();
+        Instructor i = new Instructor(12, "Instructor Test", new ArrayList<>(), "null@null.com", "pass", null);
+        instructorRepository.save(i);
+        Instructor i2 = new Instructor(15, "Other Instructor", new ArrayList<>(), "no@null.com", "pass2", null);
+        instructorRepository.save(i2);
+        AuthTokenClass authToken = new AuthTokenClass(i.getEmail(), i.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
+        NewFitnessClassDTO n = new NewFitnessClassDTO(15, "Fitness Class 2", 60, 20, LocalDate.now().plusDays(20));
+        String expectedJson = ow.writeValueAsString(n);
+        mockMvc.perform(post("/fitnessclass/create")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(expectedJson)
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorisationTokenJSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.class_name").value(n.getClass_name()));
+    }
+
+    @Test
+    void createNewFitnessClassFromValidInstructorForInvalidInstructorID_expect_EmptyResponse() throws Exception {
+        clearAllRepositories();
+        Instructor i = new Instructor(12, "Instructor Test", new ArrayList<>(), "null@null.com", "pass", null);
+        instructorRepository.save(i);
+        AuthTokenClass authToken = new AuthTokenClass(i.getEmail(), i.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
+        NewFitnessClassDTO n = new NewFitnessClassDTO(100, "Fitness Class 2", 60, 20, LocalDate.now().plusDays(20));
+        String expectedJson = ow.writeValueAsString(n);
+        mockMvc.perform(post("/fitnessclass/create")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(expectedJson)
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorisationTokenJSON))
                 .andExpect(status().isOk())
                 .andExpect(content().string(""));
     }
 
     @Test
-    void test_createNewFitnessClassWithValidInstructorID_expect_Response() throws Exception {
+    void createNewFitnessClassFromMemberNotInstructor_expect_AuthorisationResponse() throws Exception {
         clearAllRepositories();
-        instructorRepository.save(new Instructor(0, "Instructor 1", new ArrayList<>()));
-        NewFitnessClassDTO n = new NewFitnessClassDTO(4, "Test Pilates Class", 60, 20, LocalDate.now().plusDays(20));
+        Instructor i = new Instructor(12, "Instructor Test", new ArrayList<>(), "null@null.com", "pass", null);
+        instructorRepository.save(i);
+        Member m = new Member(0, "Test@Person.com", "TestMember", "Barry TestPerson", null, null, "passwordx", null );
+        memberRepository.save(m);
+        AuthTokenClass authToken = new AuthTokenClass(m.getEmail_address(), m.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
+        NewFitnessClassDTO n = new NewFitnessClassDTO(12, "Test New Fitness Class", 60, 20, LocalDate.now().plusDays(20));
         String expectedJson = ow.writeValueAsString(n);
-
         mockMvc.perform(post("/fitnessclass/create")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(expectedJson)
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.class_instructor.instructor_id").value(n.getInstructor_id()))
-                .andExpect(jsonPath("$.class_attendees").isEmpty())
-                .andExpect(jsonPath("$.class_name").value(n.getClass_name()));
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorisationTokenJSON))
+                .andExpect(status().isUnauthorized())
+                ;
     }
 
+//FOLLOWING TESTS NOT NEEDED AFTER IMPLEMENTATION OF WEBFILTER
+//    @Test
+//    void test_createNewFitnessClassWithValidInstructorID_expect_Response() throws Exception {
+//        clearAllRepositories();
+//        instructorRepository.save(new Instructor(0, "Instructor 1", new ArrayList<>(), null, null, null));
+//        NewFitnessClassDTO n = new NewFitnessClassDTO(4, "Test Pilates Class", 60, 20, LocalDate.now().plusDays(20));
+//        String expectedJson = ow.writeValueAsString(n);
+//
+//        mockMvc.perform(post("/fitnessclass/create")
+//                        .contentType(MediaType.APPLICATION_JSON)
+//                        .content(expectedJson)
+//                        .accept(MediaType.APPLICATION_JSON))
+//                .andExpect(status().isOk())
+//                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+//                .andExpect(jsonPath("$.class_instructor.instructor_id").value(n.getInstructor_id()))
+//                .andExpect(jsonPath("$.class_attendees").isEmpty())
+//                .andExpect(jsonPath("$.class_name").value(n.getClass_name()));
+//    }
+
     @Test
-    void test_createNewFitnessClassWithInvalidNewFitnessClassObject_expect_BaadRequestResponse() throws Exception {
+    void createNewFitnessClassFromAuthenticatedUserWithInvalidNewFitnessClassObject_expect_BadRequestResponse() throws Exception {
         clearAllRepositories();
+        Instructor i = new Instructor(12, "Instructor Test", new ArrayList<>(), "null@null.com", "pass", null);
+        AuthTokenClass authToken = new AuthTokenClass(i.getEmail(), i.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
+        instructorRepository.save(i);
         NewFitnessClassDTO n = new NewFitnessClassDTO();
         String expectedJson = ow.writeValueAsString(n);
-
         mockMvc.perform(post("/fitnessclass/create")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(expectedJson)
-                        .accept(MediaType.APPLICATION_JSON))
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorisationTokenJSON))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.duration").value("Duration must be more than 0."))
                 .andExpect(jsonPath("$.instructor_id").value("Instructor ID must be a valid integer, more than 0."));
@@ -116,18 +199,23 @@ class FitnessClassRestControllerIntegrationTests {
 
     // VIEW FITNESS CLASS USE CASES
     @Test
-    void test_viewFitnessClasswithValidID_expect_ValidResponse() throws Exception {
+    void viewFitnessClassAsMemberwithValidFitnessClassID_expect_ValidResponse() throws Exception {
         // NB. Test passes when run in isolation but not when run as part of class.
         // Validated functionality with Postman testing.
         clearAllRepositories();
-        instructorRepository.save(new Instructor(0, "Instructor 1", new ArrayList<>()));
+        Member m = new Member(10, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), "testPassword1", null);
+        AuthTokenClass authToken = new AuthTokenClass(m.getEmail_address(), m.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
+        memberRepository.save(m);
+        instructorRepository.save(new Instructor(0, "Instructor 1", new ArrayList<>(), "null@null.com", null, null));
         Instructor i = instructorRepository.findById(4).orElse(null);
         if (i != null) {
-            FitnessClass f = new FitnessClass(0, UUID.randomUUID().toString(), "Test Zumba Class", 60, 40, 0, LocalDate.now().plusDays(20), i, new ArrayList<>());
+            FitnessClass f = new FitnessClass(6, UUID.randomUUID().toString(), "Test Zumba Class", 60, 40, 0, LocalDate.now().plusDays(20), i, new ArrayList<>());
             fitnessClassRepository.save(f);
             mockMvc.perform(get("/fitnessclass/6")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .accept(MediaType.APPLICATION_JSON))
+                            .accept(MediaType.APPLICATION_JSON)
+                            .header("Authorization", authorisationTokenJSON))
                     .andExpect(status().isOk())
                     .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                     .andExpect(jsonPath("$.class_id").value(6))
@@ -137,38 +225,85 @@ class FitnessClassRestControllerIntegrationTests {
     }
 
     @Test
-    void test_viewFitnessClasswithInvalidID_expect_EmptyResponse() throws Exception {
+    void viewFitnessClassAsInstructorwithValidFitnessClassID_expect_ValidResponse() throws Exception {
+        // NB. Test passes when run in isolation but not when run as part of class.
+        // Validated functionality with Postman testing.
         clearAllRepositories();
+        Instructor i = new Instructor(9, "Instructor 1", new ArrayList<>(), "null@null.com", "password3", null);
+        AuthTokenClass authToken = new AuthTokenClass(i.getEmail(), i.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
+        instructorRepository.save(i);
+        i = instructorRepository.findById(9).orElse(null);
+        if (i != null) {
+            FitnessClass f = new FitnessClass(6, UUID.randomUUID().toString(), "Test Zumba Class", 60, 40, 0, LocalDate.now().plusDays(20), i, new ArrayList<>());
+            fitnessClassRepository.save(f);
+            mockMvc.perform(get("/fitnessclass/6")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .accept(MediaType.APPLICATION_JSON)
+                            .header("Authorization", authorisationTokenJSON))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.class_id").value(6))
+                    .andExpect(jsonPath("$.class_instructor.instructor_name").value(i.getInstructor_name()))
+                    .andExpect(jsonPath("$.class_name").value(f.getClass_name()));
+        }
+    }
 
+    @Test
+    void viewFitnessClassAsAuthenticatedwithInvalidClassID_expect_EmptyResponse() throws Exception {
+        clearAllRepositories();
+        Instructor i = new Instructor(9, "Instructor 1", new ArrayList<>(), "null@null.com", "password3", null);
+        instructorRepository.save(i);
+        AuthTokenClass authToken = new AuthTokenClass(i.getEmail(), i.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
         mockMvc.perform(get("/fitnessclass/6")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .accept(MediaType.APPLICATION_JSON))
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorisationTokenJSON))
                 .andExpect(status().isOk())
                 .andExpect(content().string(""));
     }
 
-    @Test
-    void test_viewFitnessClasswithNonAlphaNumericIDCharacter_expect_Error() throws Exception {
-        clearAllRepositories();
 
+    @Test
+    void viewFitnessClassAsAuthenticatedwithInvalidCharacter_expect_EmptyResponse() throws Exception {
+        clearAllRepositories();
+        Instructor i = new Instructor(9, "Instructor 1", new ArrayList<>(), "null@null.com", "password3", null);
+        instructorRepository.save(i);
+        AuthTokenClass authToken = new AuthTokenClass(i.getEmail(), i.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
         mockMvc.perform(get("/fitnessclass/_")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorisationTokenJSON))
+                .andExpect(status().isBadRequest())
+                ;
+    }
+
+    @Test
+    void viewFitnessClassAsUnAuthenticatedWithNonAlphaNumericIDCharacter_expect_AuthorisationResponse() throws Exception {
+        clearAllRepositories();
+        mockMvc.perform(get("/fitnessclass/6")
+                        .contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isUnauthorized());
     }
 
 
     // UPDATE FITNESS CLASS USE CASES
     @Test
-    void test_updateFitnessClassWithValidIDandChanges_expectResponse() throws Exception {
+    void updateFitnessClassWithValidIDandChanges_expectResponse() throws Exception {
         // NB. Test passes when run in isolation but not when run as part of class.
         // Validated functionality with Postman testing.
         clearAllRepositories();
-        instructorRepository.save(new Instructor(0, "Instructor 1", new ArrayList<>()));
-        Instructor i = instructorRepository.findById(4).orElse(null);
+        Instructor i = new Instructor(12, "Instructor 1", new ArrayList<>(), "null@null.com", "null", null);
+        instructorRepository.save(i);
+        FitnessClass f = new FitnessClass(6, UUID.randomUUID().toString(), "Test Zumba Class", 60, 40, 0, LocalDate.now().plusDays(20), i, new ArrayList<>());
+        fitnessClassRepository.save(f);
+        i = instructorRepository.findById(12).orElse(null);
         if (i != null) {
-            FitnessClass f = new FitnessClass(0, UUID.randomUUID().toString(), "Test Zumba Class", 60, 40, 0, LocalDate.now().plusDays(20), i, new ArrayList<>());
-            fitnessClassRepository.save(f);
+            AuthTokenClass authToken = new AuthTokenClass(i.getEmail(), i.getPassword());
+            String authorisationTokenJSON = mapper.writeValueAsString(authToken);
 
             UpdatedFitnessClassDTO u = new UpdatedFitnessClassDTO(6, f.getUuid(), i.getId(), "Updated Fitness Class", f.getDuration(), f.getSpaces(), f.getBooked_spaces(), f.getClass_date());
             String expectedJson = ow.writeValueAsString(u);
@@ -176,55 +311,141 @@ class FitnessClassRestControllerIntegrationTests {
             mockMvc.perform(patch("/fitnessclass/update")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(expectedJson)
-                            .accept(MediaType.APPLICATION_JSON))
+                            .accept(MediaType.APPLICATION_JSON)
+                            .header("Authorization", authorisationTokenJSON))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.class_id").value(6))
                     .andExpect(jsonPath("$.class_name").value(u.getClass_name()))
                     .andExpect(jsonPath("$.class_instructor.instructor_id").value(i.getId()));
         }
-
     }
 
     @Test
-    void test_updateFitnessClassWithValidIDandNoChanges_expectEmptyResponse() throws Exception {
+    void updateFitnessClassWithValidIDandChangesAsAuthenticatedMember_expectResponse() throws Exception {
+        // NB. Test passes when run in isolation but not when run as part of class.
+        // Validated functionality with Postman testing.
         clearAllRepositories();
-        Instructor i = new Instructor(8, "Instructor 1", new ArrayList<>());
+        Member m = new Member(10, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), "testPassword1", null);
+        AuthTokenClass authToken = new AuthTokenClass(m.getEmail_address(), m.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
+        memberRepository.save(m);
+        Instructor i = new Instructor(12, "Instructor 1", new ArrayList<>(), "null@null.com", "null", null);
         instructorRepository.save(i);
-        FitnessClass f = new FitnessClass(0, UUID.randomUUID().toString(), "Test Zumba Class", 60, 40, 0, LocalDate.now().plusDays(20), i, new ArrayList<>());
+        FitnessClass f = new FitnessClass(6, UUID.randomUUID().toString(), "Test Zumba Class", 60, 40, 0, LocalDate.now().plusDays(20), i, new ArrayList<>());
         fitnessClassRepository.save(f);
+        i = instructorRepository.findById(12).orElse(null);
+        if (i != null) {
+            UpdatedFitnessClassDTO u = new UpdatedFitnessClassDTO(6, f.getUuid(), i.getId(), "Updated Fitness Class", f.getDuration(), f.getSpaces(), f.getBooked_spaces(), f.getClass_date());
+            String expectedJson = ow.writeValueAsString(u);
 
-        UpdatedFitnessClassDTO u = new UpdatedFitnessClassDTO(6, f.getUuid(), i.getId(), f.getClass_name(), f.getDuration(), f.getSpaces(), f.getBooked_spaces(), f.getClass_date());
+            mockMvc.perform(patch("/fitnessclass/update")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(expectedJson)
+                            .accept(MediaType.APPLICATION_JSON)
+                            .header("Authorization", authorisationTokenJSON))
+                    .andExpect(status().isUnauthorized());
+        }
+    }
+
+    @Test
+    void updateFitnessClassWithValidIDandNoChanges_expectEmptyResponse() throws Exception {
+        clearAllRepositories();
+        Instructor i = new Instructor(8, "Instructor 1", new ArrayList<>(), "null@no.com", "null", null);
+        instructorRepository.save(i);
+        AuthTokenClass authToken = new AuthTokenClass(i.getEmail(), i.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
+        FitnessClass f = new FitnessClass(7, UUID.randomUUID().toString(), "Test Zumba Class", 60, 40, 0, LocalDate.now().plusDays(20), i, new ArrayList<>());
+        fitnessClassRepository.save(f);
+        UpdatedFitnessClassDTO u = new UpdatedFitnessClassDTO(7, f.getUuid(), i.getId(), f.getClass_name(), f.getDuration(), f.getSpaces(), f.getBooked_spaces(), f.getClass_date());
         String expectedJson = ow.writeValueAsString(u);
-
         mockMvc.perform(patch("/fitnessclass/update")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(expectedJson)
-                        .accept(MediaType.APPLICATION_JSON))
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorisationTokenJSON))
                 .andExpect(status().isOk())
                 .andExpect(content().string(""));
     }
 
     @Test
-    void test_updateFitnessClassWithInvalidID_expectEmptyResponse() throws Exception {
+    void updateFitnessClassWithInvalidID_expectEmptyResponse() throws Exception {
         clearAllRepositories();
-        FitnessClass f = new FitnessClass(0, UUID.randomUUID().toString(), "Test Zumba Class", 60, 40, 0, LocalDate.now().plusDays(20), null, new ArrayList<>());
+        Instructor i = new Instructor(8, "Instructor 1", new ArrayList<>(), "null@no.com", "null", null);
+        instructorRepository.save(i);
+        AuthTokenClass authToken = new AuthTokenClass(i.getEmail(), i.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
 
-        UpdatedFitnessClassDTO u = new UpdatedFitnessClassDTO(6, f.getUuid(), 6, f.getClass_name(), f.getDuration(), f.getSpaces(), f.getBooked_spaces(), f.getClass_date());
+        FitnessClass f = new FitnessClass(8, UUID.randomUUID().toString(), "Test Zumba Class", 60, 40, 0, LocalDate.now().plusDays(20), i, new ArrayList<>());
+
+        UpdatedFitnessClassDTO u = new UpdatedFitnessClassDTO(88, f.getUuid(), 8, f.getClass_name(), f.getDuration(), f.getSpaces(), f.getBooked_spaces(), f.getClass_date());
         String expectedJson = ow.writeValueAsString(u);
 
         mockMvc.perform(patch("/fitnessclass/update")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(expectedJson)
-                        .accept(MediaType.APPLICATION_JSON))
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorisationTokenJSON))
                 .andExpect(status().isOk())
                 .andExpect(content().string(""));
     }
+
+    @Test
+    void updateFitnessClassWithValidIDandChangesAsUnauthenticatedMember_expectResponse() throws Exception {
+        // NB. Test passes when run in isolation but not when run as part of class.
+        // Validated functionality with Postman testing.
+        clearAllRepositories();
+        Instructor i = new Instructor(12, "Instructor 1", new ArrayList<>(), "null@null.com", "null", null);
+        instructorRepository.save(i);
+        FitnessClass f = new FitnessClass(6, UUID.randomUUID().toString(), "Test Zumba Class", 60, 40, 0, LocalDate.now().plusDays(20), i, new ArrayList<>());
+        fitnessClassRepository.save(f);
+        i = instructorRepository.findById(12).orElse(null);
+        if (i != null) {
+            UpdatedFitnessClassDTO u = new UpdatedFitnessClassDTO(6, f.getUuid(), i.getId(), "Updated Fitness Class", f.getDuration(), f.getSpaces(), f.getBooked_spaces(), f.getClass_date());
+            String expectedJson = ow.writeValueAsString(u);
+            mockMvc.perform(patch("/fitnessclass/update")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(expectedJson)
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isUnauthorized());
+        }
+    }
+
+
 
     // VIEW FITNESS CLASSES FOR SPECIFIC INSTRUCTOR USE CASES
     @Test
-    void test_viewFitnessClassesForValidInstructorId_expect_Response() throws Exception {
+    void viewFitnessClassesForValidInstructorId_expect_Response() throws Exception {
         clearAllRepositories();
-        Instructor i = new Instructor(5, "Instructor One", new ArrayList<>());
+        Instructor i = new Instructor(5, "Instructor One", new ArrayList<>(), "null@null.com", "null", null);
+        AuthTokenClass authToken = new AuthTokenClass(i.getEmail(), i.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
+        instructorRepository.save(i);
+        List<FitnessClass> fitnessClassList = new ArrayList<>();
+        for (int x = 6; x < 10; x++) {
+            FitnessClass tempFitnessClass = new FitnessClass(x,UUID.randomUUID().toString(), "Test Class " + x, 60, 20, 0, LocalDate.now().plusDays(20), i, new ArrayList<>());
+            fitnessClassList.add(tempFitnessClass);
+        }
+        fitnessClassRepository.saveAll(fitnessClassList);
+        i.setClasses(fitnessClassList);
+        instructorRepository.save(i);
+        mockMvc.perform(get("/fitnessclass/instructor/5")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorisationTokenJSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.instructor_id").value(5))
+                .andExpect(jsonPath("$.instructor_name").value(i.getInstructor_name()))
+                .andExpect(jsonPath("$.instructor_classes[0].class_name").value("Test Class 6"))
+                .andExpect(jsonPath("$.instructor_classes[0].class_duration").value(60))
+                .andExpect(jsonPath("$.instructor_classes[1].class_name").value("Test Class 7"))
+                .andExpect(jsonPath("$.instructor_classes[1].class_booked_spaces").value(0))
+                .andExpect(jsonPath("$.instructor_classes[2].class_capacity").value(20));
+    }
+
+    @Test
+    void viewFitnessClassesForValidInstructorIdFromUnauthenticatedSource_expect_Response() throws Exception {
+        clearAllRepositories();
+        Instructor i = new Instructor(5, "Instructor One", new ArrayList<>(), "null@null.com", "null", null);
         instructorRepository.save(i);
         List<FitnessClass> fitnessClassList = new ArrayList<>();
         for (int x = 6; x < 10; x++) {
@@ -237,6 +458,30 @@ class FitnessClassRestControllerIntegrationTests {
         mockMvc.perform(get("/fitnessclass/instructor/5")
                         .contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void viewFitnessClassesForValidOtherInstructor_expect_Response() throws Exception {
+        clearAllRepositories();
+        Instructor iSearching = new Instructor(3, "Instructor One", new ArrayList<>(), "null3@null.com", "null333", null);
+        AuthTokenClass authToken = new AuthTokenClass(iSearching.getEmail(), iSearching.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
+        instructorRepository.save(iSearching);
+        Instructor i = new Instructor(5, "Instructor One", new ArrayList<>(), "null@null.com", "null", null);
+        instructorRepository.save(i);
+        List<FitnessClass> fitnessClassList = new ArrayList<>();
+        for (int x = 6; x < 10; x++) {
+            FitnessClass tempFitnessClass = new FitnessClass(x,UUID.randomUUID().toString(), "Test Class " + x, 60, 20, 0, LocalDate.now().plusDays(20), i, new ArrayList<>());
+            fitnessClassList.add(tempFitnessClass);
+        }
+        fitnessClassRepository.saveAll(fitnessClassList);
+        i.setClasses(fitnessClassList);
+        instructorRepository.save(i);
+        mockMvc.perform(get("/fitnessclass/instructor/5")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorisationTokenJSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.instructor_id").value(5))
                 .andExpect(jsonPath("$.instructor_name").value(i.getInstructor_name()))
@@ -248,21 +493,57 @@ class FitnessClassRestControllerIntegrationTests {
     }
 
     @Test
-    void test_viewFitnessClassesforInvalidInstructorId_expect_emptyResponse() throws Exception {
+    void viewFitnessClassesforInvalidInstructorId_expect_emptyResponse() throws Exception {
         clearAllRepositories();
-        mockMvc.perform(get("/fitnessclass/instructor/5")
+        Instructor i = new Instructor(5, "Instructor One", new ArrayList<>(), "null@null.com", "null", null);
+        AuthTokenClass authToken = new AuthTokenClass(i.getEmail(), i.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
+        instructorRepository.save(i);
+        mockMvc.perform(get("/fitnessclass/instructor/1")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .accept(MediaType.APPLICATION_JSON))
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorisationTokenJSON))
                 .andExpect(status().isOk())
                 .andExpect(content().string(""));
+    }
+
+    @Test
+    void viewFitnessClassesForValidInstructorFromMember_expect_AuthorisationResponse() throws Exception {
+        clearAllRepositories();
+        Member m = new Member(0, "Test@Person.com", "TestMember", "Barry TestPerson", null, null, "passwordx", null );
+        memberRepository.save(m);
+        AuthTokenClass authToken = new AuthTokenClass(m.getEmail_address(), m.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
+        Instructor i = new Instructor(5, "Instructor One", new ArrayList<>(), "null@null.com", "null", null);
+        instructorRepository.save(i);
+        List<FitnessClass> fitnessClassList = new ArrayList<>();
+        for (int x = 6; x < 10; x++) {
+            FitnessClass tempFitnessClass = new FitnessClass(x,UUID.randomUUID().toString(), "Test Class " + x, 60, 20, 0, LocalDate.now().plusDays(20), i, new ArrayList<>());
+            fitnessClassList.add(tempFitnessClass);
+        }
+        fitnessClassRepository.saveAll(fitnessClassList);
+        i.setClasses(fitnessClassList);
+        instructorRepository.save(i);
+        mockMvc.perform(get("/fitnessclass/instructor/5")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorisationTokenJSON))
+                .andExpect(status().isUnauthorized())
+                ;
     }
 
 
     @Test
     void test_viewFitnessClassesForInstructorIdNotAlphaNumeric_expect_BadRequest() throws Exception {
+        clearAllRepositories();
+        Instructor i = new Instructor(5, "Instructor One", new ArrayList<>(), "null@null.com", "null", null);
+        AuthTokenClass authToken = new AuthTokenClass(i.getEmail(), i.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
+        instructorRepository.save(i);
         mockMvc.perform(get("/fitnessclass/instructor/_")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .accept(MediaType.APPLICATION_JSON))
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorisationTokenJSON))
                 .andExpect(status().isBadRequest());
     }
 

@@ -45,6 +45,7 @@ public class ClassBookingService {
             }
         } else {
             // member or class does not exist
+            System.out.println("Class / Member not found");
             return null;
         }
     };

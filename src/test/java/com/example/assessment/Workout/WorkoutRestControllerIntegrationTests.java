@@ -55,7 +55,7 @@ class WorkoutRestControllerIntegrationTests {
     @Test
     void test_createNewWorkoutFromValidMemberId_expect_Response() throws Exception {
         clearAllRepositories();
-        Member m = new Member(10, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>());
+        Member m = new Member(10, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), null, null);
         memberRepository.save(m);
         NewWorkoutDTO newWorkoutDTO = new NewWorkoutDTO(m.getId());
         String expectedJson = ow.writeValueAsString(newWorkoutDTO);
@@ -90,7 +90,7 @@ class WorkoutRestControllerIntegrationTests {
     @Test
     void test_addNewExerciseToWorkoutWithValidWorkoutID_expect_WorkoutResponse() throws Exception {
         clearAllRepositories();
-        Member m = new Member(10, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>());
+        Member m = new Member(10, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), null, null);
         memberRepository.save(m);
         Workout w = new Workout(10, UUID.randomUUID().toString(), m, new ArrayList<>());
         workoutRepository.save(w);
@@ -111,7 +111,7 @@ class WorkoutRestControllerIntegrationTests {
     @Test
     void test_addNewExerciseToWorkoutWithInvalidWorkoutID_expect_WorkoutResponse() throws Exception {
         clearAllRepositories();
-        Member m = new Member(10, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>());
+        Member m = new Member(10, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), null, null);
         memberRepository.save(m);
         Workout w = new Workout(10, UUID.randomUUID().toString(), m, new ArrayList<>());
         workoutRepository.save(w);

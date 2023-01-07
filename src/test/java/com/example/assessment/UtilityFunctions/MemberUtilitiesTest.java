@@ -26,8 +26,8 @@ class MemberUtilitiesTest {
     void test_extractBookedFitnessClassDTOsFromMember_WhereBookingsExist() {
         Random random = new Random();
         int n = random.nextInt(4- 1) + 1;
-        Member m = new Member(n, "Test_Member_"+n+"@gmail.com", "Test_User" + n, FitnessClassUtilitiesTest.nameMap.get(n), new ArrayList<>() , new ArrayList<>());
-        Instructor in = new Instructor(1, "Instructor " + n, new ArrayList<>());
+        Member m = new Member(n, "Test_Member_"+n+"@gmail.com", "Test_User" + n, FitnessClassUtilitiesTest.nameMap.get(n), new ArrayList<>() , new ArrayList<>(), null, null);
+        Instructor in = new Instructor(1, "Instructor " + n, new ArrayList<>(), null, null, null);
         List<ClassBooking> classBookingList = new ArrayList<>();
         for (int i = 1; i < 5; i++) {
             FitnessClass f = new FitnessClass(i, UUID.randomUUID().toString(), FitnessClassUtilitiesTest.classNameMap.get(n), 45, 20, n+10, LocalDate.now().plusDays(30), in, new ArrayList<>());
@@ -48,7 +48,7 @@ class MemberUtilitiesTest {
         Random random = new Random();
         int n = random.nextInt(4- 1) + 1;
         List<ClassBooking> classBookingList = new ArrayList<>();
-        Member m = new Member(n, "Test_Member_"+n+"@gmail.com", "Test_User" + n, FitnessClassUtilitiesTest.nameMap.get(n), classBookingList, new ArrayList<>());
+        Member m = new Member(n, "Test_Member_"+n+"@gmail.com", "Test_User" + n, FitnessClassUtilitiesTest.nameMap.get(n), classBookingList, new ArrayList<>(), null, null);
         List<ClassBooking_FitnessClass_DTO> comparisonDTO = MemberUtilities.extractBookedFitnessClassDTOsFromMember(m.getClasses());
         assertEquals(0, comparisonDTO.size());
         assertTrue(comparisonDTO instanceof List<ClassBooking_FitnessClass_DTO>);
@@ -59,7 +59,7 @@ class MemberUtilitiesTest {
     void test_extractWorkoutsFromMember_WhereWorkoutsExist() {
         Random random = new Random();
         int n = random.nextInt(4- 1) + 1;
-        Member m = new Member(n, "Test_Member_"+n+"@gmail.com", "Test_User" + n, FitnessClassUtilitiesTest.nameMap.get(n), new ArrayList<>(), new ArrayList<>());
+        Member m = new Member(n, "Test_Member_"+n+"@gmail.com", "Test_User" + n, FitnessClassUtilitiesTest.nameMap.get(n), new ArrayList<>(), new ArrayList<>(), null, null);
         List<Workout> workoutList = new ArrayList<>();
         for(int i = 1; i < 5; i++) {
             Workout w = new Workout(i, UUID.randomUUID().toString(), m, new ArrayList<>());
@@ -77,7 +77,7 @@ class MemberUtilitiesTest {
     void test_extractWorkoutsFromMember_WhereNoWorkoutsExist() {
         Random random = new Random();
         int n = random.nextInt(4- 1) + 1;
-        Member m = new Member(n, "Test_Member_"+n+"@gmail.com", "Test_User" + n, FitnessClassUtilitiesTest.nameMap.get(n), new ArrayList<>(), new ArrayList<>());
+        Member m = new Member(n, "Test_Member_"+n+"@gmail.com", "Test_User" + n, FitnessClassUtilitiesTest.nameMap.get(n), new ArrayList<>(), new ArrayList<>(), null, null);
         List<Workout_Shallow_DTO> comparisonDTO = MemberUtilities.extractWorkoutsfromMember(m.getWorkouts());
         assertEquals(0, comparisonDTO.size());
         assertTrue(comparisonDTO instanceof List<Workout_Shallow_DTO>);
@@ -101,7 +101,7 @@ class MemberUtilitiesTest {
     void test_convertValidMemberWithNoWorkoutsorClassesToDTO() {
         Random random = new Random();
         int n = random.nextInt(4- 1) + 1;
-        Member m = new Member(n, "Test_Member_"+n+"@gmail.com", "Test_User" + n, FitnessClassUtilitiesTest.nameMap.get(n), new ArrayList<>(), new ArrayList<>());
+        Member m = new Member(n, "Test_Member_"+n+"@gmail.com", "Test_User" + n, FitnessClassUtilitiesTest.nameMap.get(n), new ArrayList<>(), new ArrayList<>(), null, null);
         MemberDTO comparisonDTO = MemberUtilities.convertMemberToMemberDTO(m);
         assertTrue(comparisonDTO instanceof MemberDTO);
         assertEquals(n, comparisonDTO.getMember_id());
@@ -114,7 +114,7 @@ class MemberUtilitiesTest {
     void test_convertValidMemberWithWorkoutsToDTO() {
         Random random = new Random();
         int n = random.nextInt(4- 1) + 1;
-        Member m = new Member(n, "Test_Member_"+n+"@gmail.com", "Test_User" + n, FitnessClassUtilitiesTest.nameMap.get(n), new ArrayList<>(), new ArrayList<>());
+        Member m = new Member(n, "Test_Member_"+n+"@gmail.com", "Test_User" + n, FitnessClassUtilitiesTest.nameMap.get(n), new ArrayList<>(), new ArrayList<>(), null, null);
         // Add workouts to Member and test
         List<Workout> workoutList = new ArrayList<>();
         for(int i = 1; i < 5; i++) {
@@ -135,8 +135,8 @@ class MemberUtilitiesTest {
     void test_convertValidMemberWithClassesToDTO() {
         Random random = new Random();
         int n = random.nextInt(4- 1) + 1;
-        Member m = new Member(n, "Test_Member_"+n+"@gmail.com", "Test_User" + n, FitnessClassUtilitiesTest.nameMap.get(n), new ArrayList<>(), new ArrayList<>());
-        Instructor in = new Instructor(1, "Instructor 1", new ArrayList<>());
+        Member m = new Member(n, "Test_Member_"+n+"@gmail.com", "Test_User" + n, FitnessClassUtilitiesTest.nameMap.get(n), new ArrayList<>(), new ArrayList<>(), null, null);
+        Instructor in = new Instructor(1, "Instructor 1", new ArrayList<>(), null, null, null);
         // Add workouts to Member and test
         List<ClassBooking> classBookingList = new ArrayList<>();
         for(int i = 1; i < 5; i++) {

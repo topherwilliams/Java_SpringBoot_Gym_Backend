@@ -8,13 +8,6 @@ DROP TABLE IF EXISTS Workout_Exercise;
 DROP TABLE IF EXISTS Workout;
 DROP TABLE IF EXISTS Member;
 
--- CREATE TABLE User (
---     id integer primary key auto_increment,
---     email varchar(100) not null,
---     password varchar(100) not null,
---     token varchar(200)
--- );
-
 CREATE TABLE Member (
     id integer primary key auto_increment,
     email_address varchar(100) not null,

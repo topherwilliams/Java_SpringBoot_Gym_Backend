@@ -66,7 +66,7 @@ class WorkoutUtilitiesTest {
     Workout returnWorkout() {
         Random random = new Random();
         int n = random.nextInt(4- 1) + 1;
-        Member m = new Member(n, "Test_Member_"+n+"@gmail.com", "Test_User" + n, FitnessClassUtilitiesTest.nameMap.get(n), new ArrayList<>(), new ArrayList<>());
+        Member m = new Member(n, "Test_Member_"+n+"@gmail.com", "Test_User" + n, FitnessClassUtilitiesTest.nameMap.get(n), new ArrayList<>(), new ArrayList<>(), null, null);
         return new Workout(n, UUID.randomUUID().toString(), m, new ArrayList<>());
     }
 

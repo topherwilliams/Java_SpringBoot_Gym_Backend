@@ -32,7 +32,7 @@ class FitnessClassUtilitiesTest {
     void test_extractAttendeesFromFitnessClassesWhereAttendeesExist() {
         List<ClassBooking> l = new ArrayList<>();
         for (int n = 1; n < 5; n++) {
-            Member m = new Member(n, "testEmail" + n + "@gmail.com", "TestUser"+n,  nameMap.get(n), new ArrayList<>(), new ArrayList<>());
+            Member m = new Member(n, "testEmail" + n + "@gmail.com", "TestUser"+n,  nameMap.get(n), new ArrayList<>(), new ArrayList<>(), null, null);
             ClassBooking c = createClassBookingObject(n, m);
             l.add(c);
         }
@@ -55,7 +55,7 @@ class FitnessClassUtilitiesTest {
     void test_testConvertFitnessClassToDTO() {
         Random random = new Random();
         int n = random.nextInt(4- 1) + 1;
-        Member m = new Member(n, "testEmail" + n + "@gmail.com", "TestUser"+n,  nameMap.get(n), new ArrayList<>(), new ArrayList<>());
+        Member m = new Member(n, "testEmail" + n + "@gmail.com", "TestUser"+n,  nameMap.get(n), new ArrayList<>(), new ArrayList<>(), null, null);
         FitnessClass f = createFitnessClassObject(n, m);
         FitnessClass_All_DTO comparisonFitnessClassDTO = FitnessClassUtilities.convertFitnessClassToDTO(f);
         assertEquals(n, comparisonFitnessClassDTO.getClass_id());
@@ -65,7 +65,7 @@ class FitnessClassUtilitiesTest {
     }
 
     FitnessClass createFitnessClassObject(int n, Member m) {
-        Instructor i = new Instructor(n, "Test Instructor "+n, new ArrayList<>());
+        Instructor i = new Instructor(n, "Test Instructor "+n, new ArrayList<>(), null, null, null);
         return new FitnessClass(n, UUID.randomUUID().toString(), classNameMap.get(n), 60, 20, n, LocalDate.parse("2022-11-0"+n), i, new ArrayList<>());
     }
 

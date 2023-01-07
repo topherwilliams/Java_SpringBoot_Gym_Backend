@@ -10,6 +10,7 @@ import com.example.assessment.Instructor.InstructorRepository;
 import com.example.assessment.Member.DTOs.NewMemberDTO;
 import com.example.assessment.Member.DTOs.UpdatedMemberDTO;
 import com.example.assessment.Member.Entities.Member;
+import com.example.assessment.UtilityFunctions.AuthTokenClass;
 import com.example.assessment.Workout.Entities.Workout;
 import com.example.assessment.Workout.WorkoutRepository;
 import com.example.assessment.WorkoutExercise.WorkoutExerciseRepository;
@@ -66,7 +67,8 @@ class MemberRestControllerIntegrationTests {
     @Autowired
     MockMvc mockMvc;
 
-    ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
+    ObjectMapper mapper = new ObjectMapper();
+    ObjectWriter ow = mapper.writer().withDefaultPrettyPrinter();
 
     // CREATE NEW MEMBER USE CASE TESTS
     @BeforeEach
@@ -94,7 +96,7 @@ class MemberRestControllerIntegrationTests {
     void test_whenMemberExistsAndCreateOwner_expect_NoOwnerReturned() throws Exception {
         clearAllRepositories();
 
-        Member m = new Member(0, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>());
+        Member m = new Member(0, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), null, null);
         memberRepository.save(m);
 
         NewMemberDTO newMemberDTO = new NewMemberDTO(m.getEmail_address(), m.getUsername(), m.getMember_name());
@@ -111,7 +113,7 @@ class MemberRestControllerIntegrationTests {
     @Test
     void test_whenMemberDoesntExistsAndCreateOwner_expect_OwnerReturned() throws Exception {
         clearAllRepositories();
-        Member m = new Member(0, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>());
+        Member m = new Member(0, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), null, null);
         NewMemberDTO newMemberDTO = new NewMemberDTO(m.getEmail_address(), m.getUsername(), m.getMember_name());
         String expectedJson = ow.writeValueAsString(newMemberDTO);
         mockMvc.perform(post("/member/create")
@@ -126,43 +128,49 @@ class MemberRestControllerIntegrationTests {
 
     // GET ALL MEMBERS USE CASE TESTS
     @Test
-    void test_getAllMembersWhenNoneExist_expect_EmptyResponse() throws Exception {
-        clearAllRepositories();
-        mockMvc.perform(get("/member")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(content().string("[]"));
-    }
-
-    @Test
     void test_getAllMembersWhenMembersExist_expect_Response() throws Exception {
         clearAllRepositories();
-        Member m = new Member(0, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>());
+        Member m = new Member(0, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), "null", null);
+        Member m2 = new Member(0, "test_email_CreateOwner2@gmail.com", "Test_User2", "Test User Too", new ArrayList<>(), new ArrayList<>(), "null", null);
         memberRepository.save(m);
-        Member m2 = new Member(0, "test_email_CreateOwner2@gmail.com", "Test_User2", "Test User Too", new ArrayList<>(), new ArrayList<>());
         memberRepository.save(m2);
-
+        AuthTokenClass authToken = new AuthTokenClass(m.getEmail_address(), m.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
         mockMvc.perform(get("/member")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .accept(MediaType.APPLICATION_JSON))
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorisationTokenJSON))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$[0].member_email_address").value(m.getEmail_address()))
                 .andExpect(jsonPath("$[1].member_email_address").value(m2.getEmail_address()));
     }
 
-    // GET MEMBER USE CASE TESTS
     @Test
-    void test_getMemberWhenMemberExists_expect_Response() throws Exception {
+    void unauthenticatedUserRequestsMembers_expect_AuthorisationResponse() throws Exception {
         clearAllRepositories();
-        Member m = new Member(0, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>());
+        Member m = new Member(0, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), "null", null);
+        Member m2 = new Member(0, "test_email_CreateOwner2@gmail.com", "Test_User2", "Test User Too", new ArrayList<>(), new ArrayList<>(), "null", null);
         memberRepository.save(m);
-
-        mockMvc.perform(get("/member/6")
+        memberRepository.save(m2);
+        mockMvc.perform(get("/member")
                         .contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isUnauthorized());
+    }
+
+    // GET MEMBER USE CASE TESTS
+    @Test
+    void authenticatedMemberRequestsTheirInfo_expect_Response() throws Exception {
+        clearAllRepositories();
+        Member m = new Member(6, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), "null", null);
+        memberRepository.save(m);
+        AuthTokenClass authToken = new AuthTokenClass(m.getEmail_address(), m.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
+        mockMvc.perform(get("/member/6")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorisationTokenJSON))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.member_email_address").value(m.getEmail_address()))
@@ -171,33 +179,90 @@ class MemberRestControllerIntegrationTests {
     }
 
     @Test
-    void test_getMemberWhenMemberDoesntExistbutValidId_expect_EmptyResponse() throws Exception {
+    void authenticatedMemberRequestsAnotherMembersInfo_expect_Response() throws Exception {
+        //TODO: In hindsight, might not be wise to allow members to see the other members? Future development.
         clearAllRepositories();
+        Member m = new Member(6, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), "null", null);
+        Member m2 = new Member(8, "test_email_Crea@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), "null", null);
+        memberRepository.save(m);
+        memberRepository.save(m2);
+        AuthTokenClass authToken = new AuthTokenClass(m.getEmail_address(), m.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
+        mockMvc.perform(get("/member/8")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorisationTokenJSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.member_email_address").value(m2.getEmail_address()))
+                .andExpect(jsonPath("$.member_id").value(8))
+                .andExpect(jsonPath("$.member_workouts").isEmpty());
+    }
+
+
+    @Test
+    void authenticatedInstructorRequestsAnotherMemberInfo_expect_Response() throws Exception {
+        clearAllRepositories();
+        Member m = new Member(6, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), "null", null);
+        memberRepository.save(m);
+        Instructor i = new Instructor(0, "Instructor One", new ArrayList<>(), "nul@null.com", "null", null);
+        instructorRepository.save(i);
+        AuthTokenClass authToken = new AuthTokenClass(i.getEmail(), i.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
         mockMvc.perform(get("/member/6")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .accept(MediaType.APPLICATION_JSON))
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorisationTokenJSON))
                 .andExpect(status().isOk())
-                .andExpect(content().string(""));
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.member_email_address").value(m.getEmail_address()))
+                .andExpect(jsonPath("$.member_id").value(6))
+                .andExpect(jsonPath("$.member_workouts").isEmpty());
     }
 
     @Test
-    void test_getMemberWhenIDisLetter_expect_Error() throws Exception {
+    void unauthenticatedUserRequestsAnotherMemberInfo_expect_Response() throws Exception {
         clearAllRepositories();
-        mockMvc.perform(get("/member/a")
+        Member m = new Member(6, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), "null", null);
+        memberRepository.save(m);
+        mockMvc.perform(get("/member/6")
                         .contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isUnauthorized())
+                ;
+    }
+
+
+    @Test
+    void authorisedMemberRequestsInvalidCharacterMemberID_expect_Error() throws Exception {
+        clearAllRepositories();
+        Member m = new Member(6, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), "null", null);
+        memberRepository.save(m);
+        AuthTokenClass authToken = new AuthTokenClass(m.getEmail_address(), m.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
+        mockMvc.perform(get("/member/a")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorisationTokenJSON))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void test_getMemberWhenIDisNonAlphanumericCharacter_expect_Error() throws Exception {
         clearAllRepositories();
+        Member m = new Member(6, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), "null", null);
+        memberRepository.save(m);
+        AuthTokenClass authToken = new AuthTokenClass(m.getEmail_address(), m.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
         mockMvc.perform(get("/member/*")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .accept(MediaType.APPLICATION_JSON))
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorisationTokenJSON))
                 .andExpect(status().isBadRequest());
     }
 
+
+    //TODO: YOU ARE HERE
     // UPDATE MEMBER USE CASE TESTS
     @Test
     void test_updateMemberWithIncorrectEmailUserNameandNameFormat_expect_ExceptionMessage() throws Exception {
@@ -220,7 +285,7 @@ class MemberRestControllerIntegrationTests {
     @Test
     void test_updateMemberWhenMemberIDisNotFound_expect_EmptyResponse() throws Exception {
         clearAllRepositories();
-        Member m = new Member(0, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>());
+        Member m = new Member(0, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), null, null);
         UpdatedMemberDTO updatedMemberDTO = new UpdatedMemberDTO(6, m.getEmail_address(), m.getUsername(), m.getMember_name());
         String expectedJson = ow.writeValueAsString(updatedMemberDTO);
 
@@ -235,7 +300,7 @@ class MemberRestControllerIntegrationTests {
     @Test
     void test_updateMemberWhenMemberIDisValidButNoChangesMade_expect_EmptyResponse() throws Exception {
         clearAllRepositories();
-        Member m = new Member(0, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>());
+        Member m = new Member(0, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), null, null);
         memberRepository.save(m);
 
         UpdatedMemberDTO updatedMemberDTO = new UpdatedMemberDTO(6, m.getEmail_address(), m.getUsername(), m.getMember_name());
@@ -253,7 +318,7 @@ class MemberRestControllerIntegrationTests {
     void test_updateMemberWhenMemberIDisValidAndChangesMade_expect_Response() throws Exception {
         // NB. This test runs fine when run in isolation, but when as part of full suite doesn't pass. Validated with Postman and confident that business logic works etc.
         clearAllRepositories();
-        Member m = new Member(0, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>());
+        Member m = new Member(0, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), null, null);
         memberRepository.save(m);
 
         String updatedEmailAddress = "changed_email_address@yahoo.com";
@@ -274,7 +339,7 @@ class MemberRestControllerIntegrationTests {
     @Test
     void test_deleteMemberWhenMemberExistsWithNoClassesorWorkouts_expect_emptyResponse() throws Exception {
         clearAllRepositories();
-        Member m = new Member(0, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>());
+        Member m = new Member(0, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), null, null);
         memberRepository.save(m);
 
         mockMvc.perform(delete("/member/delete/6"))
@@ -285,12 +350,12 @@ class MemberRestControllerIntegrationTests {
     @Test
     void test_deleteMemberWhenMemberExistsWithClassesAndWorkouts_expect_emptyResponse() throws Exception {
         clearAllRepositories();
-        Member m = new Member(0, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>());
+        Member m = new Member(0, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), null, null);
         List<Workout> workoutList = new ArrayList<>();
         workoutList.add(new Workout(0, UUID.randomUUID().toString(), m, new ArrayList<>()));
         m.setWorkouts(workoutList);
         List<ClassBooking> classBookingList = new ArrayList<>();
-        FitnessClass f = new FitnessClass(0, UUID.randomUUID().toString(), "Class", 60, 45, 1, LocalDate.now().plusDays(20), new Instructor(0, "Instructor One", new ArrayList<>()), new ArrayList<>());
+        FitnessClass f = new FitnessClass(0, UUID.randomUUID().toString(), "Class", 60, 45, 1, LocalDate.now().plusDays(20), new Instructor(0, "Instructor One", new ArrayList<>(), "nul@null.com", "null", null), new ArrayList<>());
         classBookingList.add(new ClassBooking(0,m, f));
         m.setClasses(classBookingList);
         memberRepository.save(m);
