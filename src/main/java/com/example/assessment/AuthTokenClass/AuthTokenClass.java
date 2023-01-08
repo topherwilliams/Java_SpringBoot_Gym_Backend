@@ -1,4 +1,4 @@
-package com.example.assessment.UtilityFunctions;
+package com.example.assessment.AuthTokenClass;
 
 import lombok.*;
 
@@ -8,6 +8,7 @@ import lombok.*;
 @Setter
 @EqualsAndHashCode
 public class AuthTokenClass {
+    // Exists to simplify mocking of credentials to include in headers
     String email_address;
     String password;
 }

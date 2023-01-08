@@ -8,11 +8,12 @@ import com.example.assessment.Instructor.Entities.Instructor;
 import com.example.assessment.Instructor.InstructorRepository;
 import com.example.assessment.Member.Entities.Member;
 import com.example.assessment.Member.MemberRepository;
-import com.example.assessment.UtilityFunctions.AuthTokenClass;
+import com.example.assessment.AuthTokenClass.AuthTokenClass;
 import com.example.assessment.Workout.WorkoutRepository;
 import com.example.assessment.WorkoutExercise.WorkoutExerciseRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -66,15 +67,18 @@ class FitnessClassRestControllerIntegrationTests {
     ObjectMapper mapper = new ObjectMapper();
     ObjectWriter ow = mapper.writer().withDefaultPrettyPrinter();
 
+    @BeforeEach
+    private void clearDatabases() {
+        clearAllRepositories();
+    }
+
     // CREATE NEW FITNESS CLASS USE CASES
 
     @Test
     void createNewFitnessClassFromValidInstructorForSameInstructor_expect_SuccessResponse() throws Exception {
-        clearAllRepositories();
         Instructor i = new Instructor(12, "Instructor Test", new ArrayList<>(), "null@null.com", "pass", null);
         instructorRepository.save(i);
-        AuthTokenClass authToken = new AuthTokenClass(i.getEmail(), i.getPassword());
-        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
+        String authorisationTokenJSON = ""; // = generateAuthorisationHeader(i);
         NewFitnessClassDTO n = new NewFitnessClassDTO(12, "Test New Fitness Class", 60, 20, LocalDate.now().plusDays(20));
         String expectedJson = ow.writeValueAsString(n);
         mockMvc.perform(post("/fitnessclass/create")
@@ -88,7 +92,6 @@ class FitnessClassRestControllerIntegrationTests {
 
     @Test
     void createNewFitnessClassFromValidInstructorForSameInstructorWithoutAuthentication_expect_AuthorisationResponse() throws Exception {
-        clearAllRepositories();
         Instructor i = new Instructor(12, "Instructor Test", new ArrayList<>(), "null@null.com", "pass", null);
         instructorRepository.save(i);
         NewFitnessClassDTO n = new NewFitnessClassDTO(12, "Test New Fitness Class", 60, 20, LocalDate.now().plusDays(20));

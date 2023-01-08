@@ -6,9 +6,9 @@ import com.example.assessment.FitnessClass.FitnessClassService;
 import com.example.assessment.Instructor.InstructorRepository;
 import com.example.assessment.Member.Entities.Member;
 import com.example.assessment.Member.MemberRepository;
-import com.example.assessment.Workout.DTOs.NewWorkoutDTO;
+import com.example.assessment.AuthTokenClass.AuthTokenClass;
 import com.example.assessment.Workout.Entities.Workout;
-import com.example.assessment.WorkoutExercise.DTOs.NewWorkoutExerciseDTO;
+import com.example.assessment.WorkoutExercise.DTOs.IncomingNewWorkoutExerciseDTO;
 import com.example.assessment.WorkoutExercise.WorkoutExerciseRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
@@ -48,83 +48,96 @@ class WorkoutRestControllerIntegrationTests {
     private FitnessClassService fitnessClassService;
     @Autowired
     MockMvc mockMvc;
-    ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
+    ObjectMapper mapper = new ObjectMapper();
+    ObjectWriter ow = mapper.writer().withDefaultPrettyPrinter();
 
 
     //CREATE NEW WORKOUT USE CASE
     @Test
-    void test_createNewWorkoutFromValidMemberId_expect_Response() throws Exception {
+    void authenticatedMemberCreatesNewWorkoutForThemselves_expect_SuccessResponse() throws Exception {
         clearAllRepositories();
-        Member m = new Member(10, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), null, null);
+        Member m = new Member(10, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), "null", null);
+        AuthTokenClass authToken = new AuthTokenClass(m.getEmail_address(), m.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
         memberRepository.save(m);
-        NewWorkoutDTO newWorkoutDTO = new NewWorkoutDTO(m.getId());
-        String expectedJson = ow.writeValueAsString(newWorkoutDTO);
-
-        mockMvc.perform(post("/workout/create")
+        mockMvc.perform(post("/workout/create/" + m.getId())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(expectedJson)
-                        .accept(MediaType.APPLICATION_JSON))
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorisationTokenJSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.workout_id").value(4))
-                .andExpect(jsonPath("$.member.member_id").value(10))
-                .andExpect(jsonPath("$.exercises").isEmpty())
-        ;
+                .andExpect(jsonPath("$.member.member_id").value(m.getId()))
+                .andExpect(jsonPath("$.exercises").isEmpty());
     }
 
     @Test
-    void test_createNewWorkoutFromInvalidMemberId_expect_EmptyResponse() throws Exception {
+    void authenticatedMemberCreatesNewWorkoutForSomeoneElse_expect_AuthorisationResponse() throws Exception {
         clearAllRepositories();
-        NewWorkoutDTO newWorkoutDTO = new NewWorkoutDTO(15);
-        String expectedJson = ow.writeValueAsString(newWorkoutDTO);
-
-        mockMvc.perform(post("/workout/create")
+        Member m = new Member(10, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), "null", null);
+        AuthTokenClass authToken = new AuthTokenClass(m.getEmail_address(), m.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
+        memberRepository.save(m);
+        Member m2 = new Member(12, "testCreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), "null", null);
+        memberRepository.save(m2);
+        mockMvc.perform(post("/workout/create/" + m2.getId())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(expectedJson)
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(content().string(""))
-        ;
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorisationTokenJSON))
+                .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    void unauthenticatedMemberCreatesNewWorkoutForSomeoneElse_expect_AuthorisationResponse() throws Exception {
+        clearAllRepositories();
+        Member m = new Member(10, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), "null", null);
+        memberRepository.save(m);
+        mockMvc.perform(post("/workout/create/" + m.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isUnauthorized());
+    }
+
 
     // ADD EXERCISE TO WORKOUT USE CASE
     @Test
-    void test_addNewExerciseToWorkoutWithValidWorkoutID_expect_WorkoutResponse() throws Exception {
+    void authenticatedMemberAddsExerciseToTheirWorkout_expect_SuccessResponse() throws Exception {
         clearAllRepositories();
-        Member m = new Member(10, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), null, null);
+        Member m = new Member(10, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), "null", null);
+        AuthTokenClass authToken = new AuthTokenClass(m.getEmail_address(), m.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
         memberRepository.save(m);
         Workout w = new Workout(10, UUID.randomUUID().toString(), m, new ArrayList<>());
         workoutRepository.save(w);
-        NewWorkoutExerciseDTO newWorkoutExerciseDTO = new NewWorkoutExerciseDTO(w.getId(), "Bicep Curl", 50, 10, 3);
-        String expectedJson = ow.writeValueAsString(newWorkoutExerciseDTO);
-
-        mockMvc.perform(post("/workout/addexercise")
+        IncomingNewWorkoutExerciseDTO iDTO = new IncomingNewWorkoutExerciseDTO("Bicep Curl", 50, 10, 3);
+        String expectedJson = ow.writeValueAsString(iDTO);
+        mockMvc.perform(post("/workout/addexercise/" + w.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(expectedJson)
-                        .accept(MediaType.APPLICATION_JSON))
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorisationTokenJSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.workout_id").value(w.getId()))
                 .andExpect(jsonPath("$.member.member_id").value(m.getId()))
-                .andExpect(jsonPath("$.exercises[0].exercise_name").value(newWorkoutExerciseDTO.getExercise_name()))
-        ;
+                .andExpect(jsonPath("$.exercises[0].exercise_name").value(iDTO.getExercise_name()));
     }
 
     @Test
-    void test_addNewExerciseToWorkoutWithInvalidWorkoutID_expect_WorkoutResponse() throws Exception {
+    void authenticatedMemberAddsExerciseToSomeoneElsesWorkout_expect_AuthorisationResponse() throws Exception {
         clearAllRepositories();
-        Member m = new Member(10, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), null, null);
+        Member m = new Member(10, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), "null", null);
+        Member m2 = new Member(12, "test_emawner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), "null", null);
+        AuthTokenClass authToken = new AuthTokenClass(m2.getEmail_address(), m2.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
         memberRepository.save(m);
         Workout w = new Workout(10, UUID.randomUUID().toString(), m, new ArrayList<>());
         workoutRepository.save(w);
-        NewWorkoutExerciseDTO newWorkoutExerciseDTO = new NewWorkoutExerciseDTO(20, "Bicep Curl", 50, 10, 3);
-        String expectedJson = ow.writeValueAsString(newWorkoutExerciseDTO);
-
-        mockMvc.perform(post("/workout/addexercise")
+        IncomingNewWorkoutExerciseDTO iDTO = new IncomingNewWorkoutExerciseDTO("Bicep Curl", 50, 10, 3);
+        String expectedJson = ow.writeValueAsString(iDTO);
+        mockMvc.perform(post("/workout/addexercise/" + w.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(expectedJson)
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(content().string(""))
-        ;
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorisationTokenJSON))
+                .andExpect(status().isUnauthorized());
     }
 
 

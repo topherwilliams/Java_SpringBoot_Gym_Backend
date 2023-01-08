@@ -81,7 +81,7 @@ public class AuthorisationFilter implements Filter {
                         requestURI.startsWith("/fitnessclass/instructor")) {
                     return false;
                 } else if (requestURI.startsWith("/classbooking/create") || requestURI.startsWith("/classbooking/attendee")) {
-                    // TODO Split out attendee due to issues
+                    // TODO Split out attendee due to issues??
                     return authenticatedMember.getId() == requestTargetID(requestURI, 2);
                 } else if (requestURI.startsWith("/classbooking/cancel")) {
                     int targetClassBooking = requestTargetID(requestURI, 2);

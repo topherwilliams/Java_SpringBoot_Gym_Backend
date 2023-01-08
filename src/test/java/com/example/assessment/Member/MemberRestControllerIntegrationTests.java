@@ -7,10 +7,10 @@ import com.example.assessment.FitnessClass.FitnessClassRepository;
 import com.example.assessment.FitnessClass.FitnessClassService;
 import com.example.assessment.Instructor.Entities.Instructor;
 import com.example.assessment.Instructor.InstructorRepository;
+import com.example.assessment.Member.DTOs.IncomingUpdatedMemberDTO;
 import com.example.assessment.Member.DTOs.NewMemberDTO;
-import com.example.assessment.Member.DTOs.UpdatedMemberDTO;
 import com.example.assessment.Member.Entities.Member;
-import com.example.assessment.UtilityFunctions.AuthTokenClass;
+import com.example.assessment.AuthTokenClass.AuthTokenClass;
 import com.example.assessment.Workout.Entities.Workout;
 import com.example.assessment.Workout.WorkoutRepository;
 import com.example.assessment.WorkoutExercise.WorkoutExerciseRepository;
@@ -27,7 +27,6 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -265,113 +264,173 @@ class MemberRestControllerIntegrationTests {
     //TODO: YOU ARE HERE
     // UPDATE MEMBER USE CASE TESTS
     @Test
-    void test_updateMemberWithIncorrectEmailUserNameandNameFormat_expect_ExceptionMessage() throws Exception {
-        UpdatedMemberDTO u = new UpdatedMemberDTO(0, "testusergmail.com", "", "");
-        String expectedJson = ow.writeValueAsString(u);
-
-        mockMvc.perform(patch("/member/update")
+    void authenticatedMemberUpdatesTheirPersonalDetails_expect_successMessage() throws Exception {
+        clearAllRepositories();
+        Member m = new Member(10, "bob@bob.com", "TestUser", "Bob Smith", new ArrayList<>(), new ArrayList<>(), "null", null);
+        memberRepository.save(m);
+        AuthTokenClass authToken = new AuthTokenClass(m.getEmail_address(), m.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
+        IncomingUpdatedMemberDTO iDTO = new IncomingUpdatedMemberDTO("ihavebeenchanged@goo.com", "Changed", "Changed!!");
+        String expectedJson = ow.writeValueAsString(iDTO);
+        mockMvc.perform(patch("/member/update/10")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(expectedJson)
-                        .accept(MediaType.APPLICATION_JSON))
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorisationTokenJSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.member_id").value(m.getId()))
+                .andExpect(jsonPath("$.member_name").value(iDTO.getMember_name()))
+//                .andExpect(status().isBadRequest())
+//                .andExpect(jsonPath("$.email_address").value("Please provide a valid email address"))
+//                .andExpect(jsonPath("$.username").value("Username cannot be blank."))
+//                .andExpect(jsonPath("$.member_name").value("Name cannot be blank."))
+        ;
+    }
+
+    @Test
+    void authenticatedMemberUpdatesAnotherMembersDetails_expect_AuthorisationResponse() throws Exception {
+        clearAllRepositories();
+        Member m = new Member(10, "bob@bob.com", "TestUser", "Bob Smith", new ArrayList<>(), new ArrayList<>(), "null", null);
+        Member m2 = new Member(20, "bo0000@bob.com", "TestUser", "Bob Smith", new ArrayList<>(), new ArrayList<>(), "null", null);
+        memberRepository.save(m);
+        memberRepository.save(m2);
+        AuthTokenClass authToken = new AuthTokenClass(m.getEmail_address(), m.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
+        IncomingUpdatedMemberDTO iDTO = new IncomingUpdatedMemberDTO("ihavebeenchanged@goo.com", "Changed", "Changed!!");
+        String expectedJson = ow.writeValueAsString(iDTO);
+        mockMvc.perform(patch("/member/update/20")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(expectedJson)
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorisationTokenJSON))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void authenticatedMemberUpdatesInvalidMemberIDDetails_expect_AuthorisationResponse() throws Exception {
+        clearAllRepositories();
+        Member m = new Member(10, "bob@bob.com", "TestUser", "Bob Smith", new ArrayList<>(), new ArrayList<>(), "null", null);
+        memberRepository.save(m);
+        AuthTokenClass authToken = new AuthTokenClass(m.getEmail_address(), m.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
+        IncomingUpdatedMemberDTO iDTO = new IncomingUpdatedMemberDTO("ihavebeenchanged@goo.com", "Changed", "Changed!!");
+        String expectedJson = ow.writeValueAsString(iDTO);
+        mockMvc.perform(patch("/member/update/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(expectedJson)
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorisationTokenJSON))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void authenticatedMemberUpdatesTheirPersonalDetailsWithInvalidInformation_expect_ErrorMessage() throws Exception {
+        clearAllRepositories();
+        Member m = new Member(10, "bob@bob.com", "TestUser", "Bob Smith", new ArrayList<>(), new ArrayList<>(), "null", null);
+        memberRepository.save(m);
+        AuthTokenClass authToken = new AuthTokenClass(m.getEmail_address(), m.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
+        IncomingUpdatedMemberDTO iDTO = new IncomingUpdatedMemberDTO();
+        String expectedJson = ow.writeValueAsString(iDTO);
+        mockMvc.perform(patch("/member/update/10")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(expectedJson)
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorisationTokenJSON))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.id").value("The ID field must be higher than 0."))
-                .andExpect(jsonPath("$.email_address").value("Please provide a valid email address"))
                 .andExpect(jsonPath("$.username").value("Username cannot be blank."))
                 .andExpect(jsonPath("$.member_name").value("Name cannot be blank."))
         ;
     }
 
-
     @Test
-    void test_updateMemberWhenMemberIDisNotFound_expect_EmptyResponse() throws Exception {
+    void authenticatedMemberUpdatesTheirPersonalDetailsWithSameInformationAsCurrent_expect_SuccessResponse() throws Exception {
         clearAllRepositories();
-        Member m = new Member(0, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), null, null);
-        UpdatedMemberDTO updatedMemberDTO = new UpdatedMemberDTO(6, m.getEmail_address(), m.getUsername(), m.getMember_name());
-        String expectedJson = ow.writeValueAsString(updatedMemberDTO);
-
-        mockMvc.perform(patch("/member/update")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(expectedJson)
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(content().string(""));
-    }
-
-    @Test
-    void test_updateMemberWhenMemberIDisValidButNoChangesMade_expect_EmptyResponse() throws Exception {
-        clearAllRepositories();
-        Member m = new Member(0, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), null, null);
+        Member m = new Member(10, "bob@bob.com", "TestUser", "Bob Smith", new ArrayList<>(), new ArrayList<>(), "null", null);
         memberRepository.save(m);
-
-        UpdatedMemberDTO updatedMemberDTO = new UpdatedMemberDTO(6, m.getEmail_address(), m.getUsername(), m.getMember_name());
-        String expectedJson = ow.writeValueAsString(updatedMemberDTO);
-
-        mockMvc.perform(patch("/member/update")
+        AuthTokenClass authToken = new AuthTokenClass(m.getEmail_address(), m.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
+        IncomingUpdatedMemberDTO iDTO = new IncomingUpdatedMemberDTO(m.getEmail_address(), m.getUsername(), m.getMember_name());
+        String expectedJson = ow.writeValueAsString(iDTO);
+        mockMvc.perform(patch("/member/update/10")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(expectedJson)
-                        .accept(MediaType.APPLICATION_JSON))
+                        .accept(MediaType.APPLICATION_JSON)
+                        .header("Authorization", authorisationTokenJSON))
                 .andExpect(status().isOk())
-                .andExpect(content().string(""));
+                .andExpect(jsonPath("$.member_username").value(m.getUsername()))
+                .andExpect(jsonPath("$.member_name").value(m.getMember_name()))
+        ;
     }
 
-    @Test
-    void test_updateMemberWhenMemberIDisValidAndChangesMade_expect_Response() throws Exception {
-        // NB. This test runs fine when run in isolation, but when as part of full suite doesn't pass. Validated with Postman and confident that business logic works etc.
-        clearAllRepositories();
-        Member m = new Member(0, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), null, null);
-        memberRepository.save(m);
 
-        String updatedEmailAddress = "changed_email_address@yahoo.com";
-        UpdatedMemberDTO updatedMemberDTO = new UpdatedMemberDTO(6, updatedEmailAddress, m.getUsername(), m.getMember_name());
-        String expectedJson = ow.writeValueAsString(updatedMemberDTO);
-
-        mockMvc.perform(patch("/member/update")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(expectedJson)
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.member_email_address").value(updatedEmailAddress))
-                .andExpect(jsonPath("$.member_id").value(6))
-                .andExpect(jsonPath("$.member_name").value(m.getMember_name()));
-    }
 
     // DELETE MEMBER USE CASE TESTS
     @Test
-    void test_deleteMemberWhenMemberExistsWithNoClassesorWorkouts_expect_emptyResponse() throws Exception {
+    void authenticatedMemberWithNoClassesorWorkoutsDeletesAccount_expect_emptyResponse() throws Exception {
         clearAllRepositories();
-        Member m = new Member(0, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), null, null);
+        Member m = new Member(6, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), "null", null);
         memberRepository.save(m);
-
-        mockMvc.perform(delete("/member/delete/6"))
+        AuthTokenClass authToken = new AuthTokenClass(m.getEmail_address(), m.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
+        mockMvc.perform(delete("/member/delete/6")
+                .header("Authorization", authorisationTokenJSON))
                 .andExpect(status().isOk())
                 .andExpect(content().string(""));
     }
 
     @Test
-    void test_deleteMemberWhenMemberExistsWithClassesAndWorkouts_expect_emptyResponse() throws Exception {
+    void authenticatedMemberWithClassesANDWorkoutsDeletesAccount_expect_emptyResponse() throws Exception {
         clearAllRepositories();
-        Member m = new Member(0, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), null, null);
-        List<Workout> workoutList = new ArrayList<>();
-        workoutList.add(new Workout(0, UUID.randomUUID().toString(), m, new ArrayList<>()));
-        m.setWorkouts(workoutList);
-        List<ClassBooking> classBookingList = new ArrayList<>();
-        FitnessClass f = new FitnessClass(0, UUID.randomUUID().toString(), "Class", 60, 45, 1, LocalDate.now().plusDays(20), new Instructor(0, "Instructor One", new ArrayList<>(), "nul@null.com", "null", null), new ArrayList<>());
-        classBookingList.add(new ClassBooking(0,m, f));
-        m.setClasses(classBookingList);
+        Member m = new Member(10, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), "password", null);
+        AuthTokenClass authToken = new AuthTokenClass(m.getEmail_address(), m.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
         memberRepository.save(m);
-
-        mockMvc.perform(delete("/member/delete/6"))
+        Workout w = new Workout(15, UUID.randomUUID().toString(), m, new ArrayList<>());
+        workoutRepository.save(w);
+        Instructor i = new Instructor(10, "Instructor One", new ArrayList<>(), "nul@null.com", "null", null);
+        instructorRepository.save(i);
+        FitnessClass f = new FitnessClass(9, UUID.randomUUID().toString(), "Class", 60, 45, 1, LocalDate.now().plusDays(20), i, new ArrayList<>());
+        fitnessClassRepository.save(f);
+        ClassBooking c = new ClassBooking(5, m, f);
+        classBookingRepository.save(c);
+        mockMvc.perform(delete("/member/delete/10")
+                .header("Authorization", authorisationTokenJSON))
                 .andExpect(status().isOk())
                 .andExpect(content().string(""));
     }
 
     @Test
-    void test_deleteMemberWhenMemberDoesNotExist_expect_emptyResponse() throws Exception {
+    void authenticatedMemberWithNoClassesorWorkoutsDeletesAnotherMembersAccount_expect_AuthorisationResponse() throws Exception {
         clearAllRepositories();
-        mockMvc.perform(delete("/member/delete/2"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(""));
+        Member m = new Member(6, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), "null", null);
+        Member m2 = new Member(12, "test_emaOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), "null", null);
+        memberRepository.save(m);
+        memberRepository.save(m2);
+        AuthTokenClass authToken = new AuthTokenClass(m.getEmail_address(), m.getPassword());
+        String authorisationTokenJSON = mapper.writeValueAsString(authToken);
+        mockMvc.perform(delete("/member/delete/12")
+                        .header("Authorization", authorisationTokenJSON))
+                .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    void unauthenticatedMemberWithClassesANDWorkoutsDeletesAccount_expect_AuthorisationResponse() throws Exception {
+        clearAllRepositories();
+        Member m = new Member(10, "test_email_CreateOwner@gmail.com", "Test_User", "Test User", new ArrayList<>(), new ArrayList<>(), "password", null);
+        memberRepository.save(m);
+        Workout w = new Workout(15, UUID.randomUUID().toString(), m, new ArrayList<>());
+        workoutRepository.save(w);
+        Instructor i = new Instructor(10, "Instructor One", new ArrayList<>(), "nul@null.com", "null", null);
+        instructorRepository.save(i);
+        FitnessClass f = new FitnessClass(9, UUID.randomUUID().toString(), "Class", 60, 45, 1, LocalDate.now().plusDays(20), i, new ArrayList<>());
+        fitnessClassRepository.save(f);
+        ClassBooking c = new ClassBooking(5, m, f);
+        classBookingRepository.save(c);
+        mockMvc.perform(delete("/member/delete/10"))
+                .andExpect(status().isUnauthorized());
+    }
+
 
 
     void clearAllRepositories() {

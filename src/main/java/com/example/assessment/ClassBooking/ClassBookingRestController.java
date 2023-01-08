@@ -1,7 +1,9 @@
 package com.example.assessment.ClassBooking;
 
 import com.example.assessment.ClassBooking.DTOs.ClassBooking_FitnessClass_DTO;
+import com.example.assessment.ClassBooking.DTOs.IncomingClassBookingDTO;
 import com.example.assessment.ClassBooking.DTOs.NewClassBookingDTO;
+import com.example.assessment.Member.DTOs.NewMemberDTO;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -24,10 +26,10 @@ public class ClassBookingRestController {
 
     private final ClassBookingService classBookingService;
 
-    @PostMapping(path="/create/{userID}/{classID}")
+    @PostMapping(path="/create/{userID}")
     ClassBooking_FitnessClass_DTO bookClass(@PathVariable(name = "userID") int userID,
-                                            @PathVariable(name = "classID") int classID){
-        NewClassBookingDTO n = new NewClassBookingDTO(classID, userID);
+                                            @RequestBody @Valid IncomingClassBookingDTO iDTO){
+        NewClassBookingDTO n = new NewClassBookingDTO(iDTO.getClass_id(), userID);
         return classBookingService.bookClass(n);
     };
 

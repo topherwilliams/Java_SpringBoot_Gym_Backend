@@ -1,5 +1,6 @@
 package com.example.assessment.Member;
 
+import com.example.assessment.Member.DTOs.IncomingUpdatedMemberDTO;
 import com.example.assessment.Member.DTOs.MemberDTO;
 import com.example.assessment.Member.DTOs.NewMemberDTO;
 import com.example.assessment.Member.DTOs.UpdatedMemberDTO;
@@ -52,8 +53,9 @@ public class MemberRestController {
     }
 
     @PatchMapping( path="/update/{id}")
-    MemberDTO updateMember(@PathVariable(name = "id") int id,  @RequestBody UpdatedMemberDTO updatedMemberDTO) {
-        return memberService.updateMember(updatedMemberDTO);
+    MemberDTO updateMember(@PathVariable(name = "id") int id,  @RequestBody @Valid IncomingUpdatedMemberDTO iUDTO) {
+        UpdatedMemberDTO uDTO = new UpdatedMemberDTO(id, iUDTO.getEmail_address(), iUDTO.getUsername(), iUDTO.getMember_name() );
+        return memberService.updateMember(uDTO);
     }
 
 
