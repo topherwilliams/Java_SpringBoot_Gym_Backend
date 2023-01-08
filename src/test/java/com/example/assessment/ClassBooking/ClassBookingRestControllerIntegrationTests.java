@@ -3,16 +3,11 @@ import com.example.assessment.ClassBooking.DTOs.IncomingClassBookingDTO;
 import com.example.assessment.ClassBooking.Entities.ClassBooking;
 import com.example.assessment.FitnessClass.Entities.FitnessClass;
 import com.example.assessment.FitnessClass.FitnessClassRepository;
-import com.example.assessment.FitnessClass.FitnessClassService;
 import com.example.assessment.Instructor.Entities.Instructor;
 import com.example.assessment.Instructor.InstructorRepository;
 import com.example.assessment.Member.Entities.Member;
 import com.example.assessment.Member.MemberRepository;
-import com.example.assessment.AuthTokenClass.AuthTokenClass;
 import com.example.assessment.TestUtilityFunctions.TestUtilityFunctions;
-import com.example.assessment.Workout.WorkoutRepository;
-import com.example.assessment.WorkoutExercise.WorkoutExerciseRepository;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,7 +15,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.*;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -39,8 +33,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ClassBookingRestControllerIntegrationTests {
 
     @Autowired
-    private TestRestTemplate restTemplate;
-    @Autowired
     private MemberRepository memberRepository;
     @Autowired
     private ClassBookingRepository classBookingRepository;
@@ -48,12 +40,7 @@ class ClassBookingRestControllerIntegrationTests {
     private FitnessClassRepository fitnessClassRepository;
     @Autowired
     private InstructorRepository instructorRepository;
-    @Autowired
-    private WorkoutExerciseRepository workoutExerciseRepository;
-    @Autowired
-    private WorkoutRepository workoutRepository;
-    @Autowired
-    private FitnessClassService fitnessClassService;
+
     @Autowired
     MockMvc mockMvc;
 
@@ -69,16 +56,6 @@ class ClassBookingRestControllerIntegrationTests {
     private void clearDatabases() {
         testUtilityFunctions.clearAllRepositories();
     }
-
-//    public String generateAuthorisationHeader(Member m) throws JsonProcessingException {
-//        AuthTokenClass authToken = new AuthTokenClass(m.getEmail_address(), m.getPassword());
-//        return mapper.writeValueAsString(authToken);
-//    }
-//
-//    public String generateAuthorisationHeader(Instructor i) throws JsonProcessingException {
-//        AuthTokenClass authToken = new AuthTokenClass(i.getEmail(), i.getPassword());
-//        return mapper.writeValueAsString(authToken);
-//    }
 
     @Test
     void authenticatedMemberBooksClassForThemselvesWithInvalidClassID_Expect_EmptyResponse() throws Exception {
@@ -320,14 +297,4 @@ class ClassBookingRestControllerIntegrationTests {
                     .andExpect(jsonPath("$[0].booking_id").value(c.getId()));
         }
     }
-
-//    public void clearAllRepositories() {
-//        classBookingRepository.deleteAll();
-//        fitnessClassRepository.deleteAll();
-//        instructorRepository.deleteAll();
-//        workoutExerciseRepository.deleteAll();
-//        workoutRepository.deleteAll();
-//        memberRepository.deleteAll();
-//    }
-
 }
