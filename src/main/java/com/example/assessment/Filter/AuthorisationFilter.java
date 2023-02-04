@@ -1,31 +1,24 @@
 package com.example.assessment.Filter;
 
 import com.example.assessment.ClassBooking.ClassBookingRepository;
-import com.example.assessment.ClassBooking.DTOs.NewClassBookingDTO;
 import com.example.assessment.ClassBooking.Entities.ClassBooking;
 import com.example.assessment.Instructor.DTOs.InstructorCredentialsDTO;
 import com.example.assessment.Instructor.Entities.Instructor;
 import com.example.assessment.Instructor.InstructorService;
 import com.example.assessment.Member.DTOs.MemberCredentialsDTO;
-import com.example.assessment.Member.DTOs.UpdatedMemberDTO;
 import com.example.assessment.Member.Entities.Member;
 import com.example.assessment.Member.MemberService;
-import com.example.assessment.Workout.DTOs.NewWorkoutDTO;
 import com.example.assessment.Workout.Entities.Workout;
 import com.example.assessment.Workout.WorkoutRepository;
-import com.example.assessment.WorkoutExercise.DTOs.NewWorkoutExerciseDTO;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
-import org.springframework.web.util.ContentCachingRequestWrapper;
+
 
 import javax.servlet.*;
 import javax.servlet.annotation.WebFilter;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.stream.Collectors;
+
 
 @AllArgsConstructor
 @WebFilter(urlPatterns = {"/*"})
@@ -37,13 +30,18 @@ public class AuthorisationFilter implements Filter {
     private final WorkoutRepository workoutRepository;
     private final ClassBookingRepository classBookingRepository;
 
-
     @Override
     public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
+        System.out.println("Start of Filter");
         HttpServletRequest request = (HttpServletRequest)servletRequest;
         HttpServletResponse response = (HttpServletResponse)servletResponse;
+//        response.setHeader("Access-Control-Allow-Origin", "*");
+//        response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+//        response.setHeader("Access-Control-Max-Age", "3600");
+//        response.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+//        response.setHeader("Access-Control-Allow-Credentials", "true");
+//        response.setStatus(200);
         String requestURI = request.getRequestURI().toLowerCase();
-        //ContentCachingRequestWrapper cachedRequest = new ContentCachingRequestWrapper(request); // Creating a cached version of the request
 
         // AUTHORISATION RULES
         if (requestURI.contains("member/create")) {
@@ -53,7 +51,6 @@ public class AuthorisationFilter implements Filter {
         else if (memberIsAuthorised(request)) {
             System.out.println("Member request authenticated, passing to endpoint.");
             filterChain.doFilter(servletRequest, servletResponse);
-//            filterChain.doFilter(cachedRequest, servletResponse);
         }
         else if (instructorIsAuthorised(request)) {
             System.out.println("Instructor request authenticated, passing to endpoint.");
@@ -65,6 +62,7 @@ public class AuthorisationFilter implements Filter {
     }
 
     private boolean memberIsAuthorised(HttpServletRequest request) throws IOException {
+        System.out.println("Start of Authentication");
         String requestURI = request.getRequestURI().toLowerCase();
         String token = request.getHeader("AUTHORIZATION");
         if (token != null) {

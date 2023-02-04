@@ -9,8 +9,6 @@ import com.example.assessment.Member.DTOs.MemberDTO;
 import com.example.assessment.Member.DTOs.NewMemberDTO;
 import com.example.assessment.Member.DTOs.UpdatedMemberDTO;
 import com.example.assessment.Member.Entities.Member;
-import com.example.assessment.User.DTOs.UserCredentialsDTO;
-import com.example.assessment.User.Entities.User;
 import com.example.assessment.UtilityFunctions.GeneralUtilities;
 import com.example.assessment.UtilityFunctions.MemberUtilities;
 import com.example.assessment.UtilityFunctions.StringHasher;

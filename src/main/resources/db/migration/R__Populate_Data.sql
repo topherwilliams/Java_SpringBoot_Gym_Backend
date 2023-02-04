@@ -64,8 +64,8 @@ CREATE TABLE Class_Booking (
 
 INSERT INTO Instructor(instructor_name, email, password)
 VALUES ('Instructor 1', 'email@one.com', 'password1'),
-       ('Instructor 2', 'email@one.com',  'password2'),
-       ('Instructor 3', 'email@one.com',  'password3');
+       ('Instructor 2', 'email@two.com',  'password2'),
+       ('Instructor 3', 'email@three.com',  'password3');
 
 insert into Fitness_Class(instructor_id, uuid, class_name, duration, spaces, booked_spaces, class_date)
 values (1, '4b102ba9-9ef6-4e17-b196-3f6b9ab82dcd' , 'Pilates', 45, 20, 2, DATE '2023-12-01'),

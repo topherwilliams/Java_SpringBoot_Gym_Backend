@@ -1,6 +1,7 @@
 package com.example.assessment.ClassBooking;
 
 import com.example.assessment.ClassBooking.DTOs.ClassBooking_FitnessClass_DTO;
+import com.example.assessment.ClassBooking.DTOs.IncomingClassBookingDTO;
 import com.example.assessment.ClassBooking.DTOs.NewClassBookingDTO;
 import com.example.assessment.ClassBooking.Entities.ClassBooking;
 import com.example.assessment.FitnessClass.DTOs.FitnessClass_Shallow_DTO;
@@ -68,6 +69,12 @@ public class ClassBookingService {
             }
         }
         return tempDTOList;
+    }
+
+    NewClassBookingDTO isMemberBookedOnClass(NewClassBookingDTO i) {
+        ClassBooking cb = classBookingRepository.findClassBookingByMemberIDandClassID(i.getMember_id(), i.getClass_id());
+        NewClassBookingDTO n = new NewClassBookingDTO(cb.getFitnessClass().getId(), cb.getMember().getId());
+        return n;
     }
 
 

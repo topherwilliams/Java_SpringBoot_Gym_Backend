@@ -47,5 +47,10 @@ public class ClassBookingRestController {
         return classBookingService.getUpcomingClassesByMember(id);
     }
 
+    @GetMapping(path="/classbookingsearch/{userID}")
+    NewClassBookingDTO isMemberBookedOnClass(@PathVariable("userID") int userID,
+                                             @RequestBody NewClassBookingDTO iDTO) {
+        return classBookingService.isMemberBookedOnClass(iDTO);
+    }
 
 }

@@ -2,7 +2,6 @@ package com.example.assessment.Member;
 
 import com.example.assessment.Instructor.Entities.Instructor;
 import com.example.assessment.Member.Entities.Member;
-import com.example.assessment.User.Entities.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
